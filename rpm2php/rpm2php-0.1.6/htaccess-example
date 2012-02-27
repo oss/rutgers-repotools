@@ -1,0 +1,26 @@
+Order Allow,Deny
+Allow from all
+
+RewriteEngine On
+RewriteCond %{HTTPS} off
+RewriteRule (.*) https://%{HTTP_HOST}%{REQUEST_URI}
+
+AuthType Basic
+AuthName "OSS Publish Area - No save space"
+AuthBasicProvider ldap
+
+AuthLDAPUrl "ldap://ldap.nbcs.rutgers.edu/ou=stanley,o=Rutgers CSS,c=US?uid?sub" TLS
+
+AuthzLDAPAuthoritative off
+
+
+<Files "login.php">
+Require user PUT THE USERNAMES HERE
+Require group PUT THE USER GROUPS HERE
+</Files>
+
+<Files "logout.php">
+AuthBasicProvider file
+AuthUserFile /var/www/html/rpm2php/.htpasswd
+Require user log
+</Files>

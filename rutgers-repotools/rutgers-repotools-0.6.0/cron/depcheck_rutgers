@@ -1,0 +1,2 @@
+#!/bin/sh
+su oss -c "/usr/bin/checkrepo -q rutgers"
