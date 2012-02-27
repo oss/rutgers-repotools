@@ -1,0 +1,4 @@
+These are the tools Open System Solutions uses to manage CentOS 5 and 6 repositories for Rutgers University. They are to be used alongside koji. 
+Rutgers-repotools is for publishing packages and maintaining repository integrity, while rpm2php is for displaying the contents of the repos. 
+
+For more detailed information on rpm2php or rutgers-repotools, see the README in rpm2php or rutgers-repotools.
