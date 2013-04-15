@@ -1,0 +1,17 @@
+# This file lists the exceptions to dependency breakages that the
+# depcheck script will ignore. Keep it as explicit as possible.
+# Each line must contain exactly 3 elements.
+# Syntax: (* is wildcard)
+#
+# Name:                              Dependency Name:            Dependency Version:
+#
+php-mysql			     libmysqlclient.so.*         5.2.17-2.ru
+java-1.6.0-openjdk-plugin	     java-1.6.0-openjdk		 1:1.6.0.0-1.21.b17.el6
+qt4-sqlite			     qt4			 0:4.2.1-1.el5_7.1
+kmod*					kernel*									*
+mingw32-*				mingw32*								*
+ovirt-node*				livecd-tools							0:020-2 
+awesome              cairo(xcb)                    *
+smolt-server*					mx								*
+smolt-server*					TurboGears						*
+dovecot-pigeonhole*			libdovecot-sieve.so.*		    *   
