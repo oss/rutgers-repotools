@@ -2,8 +2,8 @@
 
 Summary:   Dependency check and publish scripts
 Name:      rutgers-repotools
-Version:   0.6.0
-Release:   1%{?dist}
+Version:   0.6.4
+Release:   1.ru6
 License:   GPLv2+
 Group:     System Environment/Base
 URL:       http://cvs.rutgers.edu/cgi-bin/viewvc.cgi/trunk/orcan/rutgers-repotools/
@@ -16,6 +16,8 @@ Requires:  createrepo
 Requires:  koji
 Requires:  yum-utils
 Requires:  MySQL-python
+Requires: python
+BuildRequires: python
 
 %description
 This package contains the tools we use to check the dependencies of
@@ -66,7 +68,7 @@ echo    openssl genrsa -out certs/${user}.key 2048
 echo    openssl req -config ssl.cnf -new -nodes -out certs/${user}.csr -key certs/${user}.key
 echo    openssl ca -config ssl.cnf -keyfile private/koji_ca_cert.key -cert koji_ca_cert.crt -out certs/${user}.crt -outdir certs -infiles certs/${user}.csr
 echo    cat certs/${user}.crt certs/${user}.key > ${user}.pem
-echo 
+echo
 echo Also, a MySQL database needs to be created with write permisson, to be used by rpm2php:
 echo
 echo    mysql -u root -p
@@ -77,9 +79,9 @@ echo    create database rpmfind;
 echo    grant usage on *.* to roji@localhost identified by 'PASSWORD';
 echo    grant all privileges on rpmfind.* to roji@localhost;
 echo    exit;
-echo 
-echo Symlinks to movepackage, pullpackage, pushpackage and populate-rpmfind-database 
-echo need to be created in webtools webbin directory to make runas work, for 
+echo
+echo Symlinks to movepackage, pullpackage, pushpackage and populate-rpmfind-database
+echo need to be created in webtools webbin directory to make runas work, for
 echo managing packages through rpm2php. The symlinks must have the same owner with
 echo the actual scripts.
 echo
@@ -92,6 +94,7 @@ echo More information can be found in the README file.
 %defattr(-,root,root,-)
 %doc AUTHORS ChangeLog COPYING README
 %{_bindir}/checkrepo
+%{_bindir}/checkrepo6
 %{_bindir}/movepackage
 %{_bindir}/pullpackage
 %{_bindir}/pushpackage
@@ -103,17 +106,34 @@ echo More information can be found in the README file.
 %{_bindir}/rebuild-repos6
 %{_bindir}/populate-rpmfind-db6
 %{python_sitelib}/RUtools/
+%{python_sitelib}/rutgers_repotools-0.6.4-py2.6.egg-info
 %config %{_sysconfdir}/cron.daily/depcheck_rutgers
+%config %{_sysconfdir}/cron.daily/depcheck_rutgers6
 %config(noreplace) %{_sysconfdir}/depcheck.ignore
 %config(noreplace) %{_sysconfdir}/depcheck6.ignore
 %config(noreplace) %{_sysconfdir}/rutgers-repotools.cfg
 %config(noreplace) %{_sysconfdir}/rutgers-repotools-centos6.cfg
 
-# Why does %%_logdir macro not work?
-%attr(775, root, studsys) %dir /var/log/%{name}/
+# The log directory should be setgid with packagepushers, so the logs
+# are readable/writeable by anyone in packagepushers
+%attr(4775, root, packagepushers) %dir /var/log/%{name}/
 
 
 %changelog
+* Mon Mar 04 2013 Harry Stern <hcstern@nbcs.rutgers.edu> 0.6.4-1.ru6
+- Rebuild for CentOS 6
+
+* Tue Feb 05 2013 Jarek Sedlacej <jarek@nbcs.rutgers.edu> 0.6.4-1.ru
+- bumped to version 0.6.4
+* Wed Jan 30 2013 Jarek Sedlacek <jarek@nbcs.rutgers.edu> - 0.6.3-3.ru
+- Updated depcheck cron scripts to check both stable and testing repos
+* Tue Jan 22 2013 Jarek Sedlacek <jarek@nbcs.rutgers.edu> - 0.6.3-1.ru
+- Included checkrepo6 binary in package (bump to 0.6.3)
+* Wed Nov 07 2012 Jarek Sedlacek <jarek@nbcs.rutgers.edu> - 0.6.2-1.ru
+- Updated to 0.6.2
+* Wed Jun 13 2012 Kaitlin Poskaitis <katiepru@nbcs.rutgers.edu> - 0.6.1-1.ru
+- Updated to 0.6.1
+
 * Wed Feb 22 2012 Jarek Sedlacek <jarek@nbcs.rutgers.edu> - 0.6.0-1.ru
 - update to 0.6.0
 
