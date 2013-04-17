@@ -103,31 +103,41 @@ class AppHandler:
         if self._lockfilename == None:
             print "No lockfile specified in the configuration for the application"
             sys.exit(1)
-        if os.path.isfile(self._lockfilename):
-            print "An instance of '" + self._callername + \
-                "' is already running. Please wait until it exits, or"
-            print "if this is not the case, remove the lock file " + \
-                self._lockfilename
-            sys.exit(1)
+        if os.path.isfile(self._lockfilename): 
+            if is_running():
+                remove_lock()
+            else:
+                print "Process is currently running. Please wait for it to finish"
         lockers = self.config.options('locks')
         for locker in lockers:
             lockfilename = self.config.get('locks', locker)
             if os.path.isfile(lockfilename):
-                print "An instance of '" + locker + \
-                    "' is running. Please wait until it exits, or"
-                print "if this is not the case, remove the lock file " + \
-                    lockfilename
-                sys.exit(1) 
+                if is_running():
+                    remove_lock()
+                else:
+                    print "Process is currently running. Please wait for it to finish"    
+                    sys.exit(1)
 
     def create_lock(self):
         """ Create a lock file for this application """
         self.check_lock()
-        open(self._lockfilename, "w").close()
+        lockfile = open(self._lockfilename, "w")
+        lockfile.write(os.getpid())
         
     def remove_lock(self):
         """ Delete the lock file of this application """
         if os.path.isfile(self._lockfilename):
             os.remove(self._lockfilename)
+    
+    def is_running(self):
+        lockfile = open(self._lockfilename, "r")
+        try:
+            os.kill(lockfile.readline(), 0)
+            lockfile.close()
+            return 1
+        except:
+            lockfile.close()
+            return 0
 
     def exit(self, status=0):
         """ Exit from application gracefully """
