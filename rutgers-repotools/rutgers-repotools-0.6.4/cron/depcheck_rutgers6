@@ -1,3 +1,0 @@
-#!/bin/sh
-su oss -c "/usr/bin/checkrepo6 -q rutgers"
-su oss -c "/usr/bin/checkrepo6 -q rutgers-testing"
