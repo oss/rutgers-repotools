@@ -1,0 +1,4 @@
+src/checkdep.py is heavily modified version of Fedora's spam-o-matic from mash project:
+http://git.fedoraproject.org/git/mash
+
+The rest is written by Orcan Ogetbil, Jarek Sedlacek, and Kaitlin Poskaitis
