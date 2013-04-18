@@ -48,6 +48,7 @@ chmod -w $RPM_BUILD_ROOT/%{_bindir}/movepackage6
 chmod -w $RPM_BUILD_ROOT/%{_bindir}/pullpackage6
 chmod -w $RPM_BUILD_ROOT/%{_bindir}/pushpackage6
 chmod -w $RPM_BUILD_ROOT/%{_bindir}/populate-rpmfind-db6
+mkdir $RPM_BUILD_ROOT/var/lock/rutgers-repotools
 
 
 
@@ -117,6 +118,9 @@ echo More information can be found in the README file.
 # The log directory should be setgid with packagepushers, so the logs
 # are readable/writeable by anyone in packagepushers
 %attr(4775, root, packagepushers) %dir /var/log/%{name}/
+
+# lock directory should be owned by packagepushers, and setgid packagepushers
+%attr(4775, root, packagepushers) %dir /var/lock/rutgers-repotools
 
 
 %changelog
