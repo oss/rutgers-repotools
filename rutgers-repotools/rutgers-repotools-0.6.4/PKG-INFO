@@ -1,6 +1,6 @@
 Metadata-Version: 1.0
 Name: rutgers-repotools
-Version: 0.6.4
+Version: 0.6.5
 Summary: Dependency check and publish scripts
 Home-page: http://cvs.rutgers.edu/cgi-bin/viewvc.cgi/trunk/orcan/rutgers-repotools/
 Author: Orcan Ogetbil

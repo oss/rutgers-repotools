@@ -1,3 +1,6 @@
+2013-4-18 (0.6.5)
+	- updated to check if locks can be deleted (if the process that created
+	the lock is no longer running).
 2013-2-5 (0.6.4)
 	- updated to chown package dirs if owned by wrong group after
 	push/pull/etc

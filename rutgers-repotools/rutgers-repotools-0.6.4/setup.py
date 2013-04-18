@@ -18,7 +18,7 @@ if "install" in args:
     #file_util.write_file(buildroot + '/var/log/rutgers-repotools/rebuild-repos.log', "")
 
 setup(name         = 'rutgers-repotools',
-      version      = '0.6.4',
+      version      = '0.6.5',
       description  = 'Dependency check and publish scripts',
       author       = 'Orcan Ogetbil',
       author_email = 'oss@oss.rutgers.edu',

@@ -2,7 +2,7 @@
 
 Summary:   Dependency check and publish scripts
 Name:      rutgers-repotools
-Version:   0.6.4
+Version:   0.6.5
 Release:   1.ru6
 License:   GPLv2+
 Group:     System Environment/Base
@@ -106,7 +106,7 @@ echo More information can be found in the README file.
 %{_bindir}/rebuild-repos6
 %{_bindir}/populate-rpmfind-db6
 %{python_sitelib}/RUtools/
-%{python_sitelib}/rutgers_repotools-0.6.4-py2.6.egg-info
+%{python_sitelib}/rutgers_repotools-%{version}-py2.6.egg-info
 %config %{_sysconfdir}/cron.daily/depcheck_rutgers
 %config %{_sysconfdir}/cron.daily/depcheck_rutgers6
 %config(noreplace) %{_sysconfdir}/depcheck.ignore
@@ -120,6 +120,8 @@ echo More information can be found in the README file.
 
 
 %changelog
+* Wed Apr 17 2013 Matt Robinson <mwr54@nbcs.rutgers.edu> 0.6.5-1.ru6
+- version bump
 * Mon Mar 04 2013 Harry Stern <hcstern@nbcs.rutgers.edu> 0.6.4-1.ru6
 - Rebuild for CentOS 6
 
