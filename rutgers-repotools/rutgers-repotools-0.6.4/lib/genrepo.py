@@ -1,5 +1,5 @@
 """ Library to generate rutgers rpm repositories """
-# 
+#
 ###############################################################################
 #Programmer: Orcan Ogetbil    orcan@nbcs.rutgers.edu                          #
 #Date: 09/10/2010                                                             #
@@ -26,11 +26,6 @@ import shutil
 import sys
 import string
 import tempfile
-import imp
-sys.path.append('/usr/share/createrepo/')
-sys.modules['createrepo'] = imp.load_source(
-                                  "createrepo",
-                                  "/usr/share/createrepo/genpkgmetadata.py")
 import createrepo
 
 def mkdir_p(path):
@@ -65,7 +60,7 @@ def gen_repos(app, repos, builddebug=False):
                 pass
             else: raise
         shutil.move(repos_tmpdir + "/debug/" + distver, repos_dir + "/" + debugrepo + "/" + distver)
-        
+
     if repos:
         for repo in repos:
             create_repo(app, kojisession, repo, repos_tmpdir)
@@ -79,7 +74,7 @@ def gen_repos(app, repos, builddebug=False):
                     pass
                 else: raise
             shutil.move(repos_tmpdir + "/" + repo + "/" + distver, repos_dir + "/" + repo + "/" + distver)
-    
+
     app.logger.info("Cleaning up.")
     shutil.rmtree(repos_tmpdir, ignore_errors = True)
 
@@ -127,7 +122,7 @@ def create_debug_repo(app, kojisession, repos_tmpdir):
         rpmno += 1
         if rpm['name'].find("-debuginfo") == -1:
             continue
-        
+
         build = kojisession.getBuild(rpm['build_id'])
         koji_pkg_dir = app.config.get('koji','pkgdir')
         nvr_dir = koji_pkg_dir + build['name'] + "/" + build['version'] + \
@@ -146,7 +141,7 @@ def create_debug_repo(app, kojisession, repos_tmpdir):
             if exc.errno == errno.EEXIST:
                 pass
             else: raise
-                
+
     for archdir in archs:
         if fresh:
             createrepo.main([repo_tmpdir + "/" + archdir])
@@ -170,7 +165,7 @@ def create_repo(app, kojisession, repo, repos_tmpdir):
     for arch in archs + ["SRPMS"]:
         mkdir_p(repo_tmpdir + "/" + arch)
         try:
-            shutil.copytree(repo_dir + "/" + arch + "/repodata", 
+            shutil.copytree(repo_dir + "/" + arch + "/repodata",
                             repo_tmpdir + "/" + arch + "/repodata")
         except OSError:
             fresh = True
@@ -196,8 +191,8 @@ def create_repo(app, kojisession, repo, repos_tmpdir):
             tags.append(info['name'])
         if not repo_prefix+repo in tags:
             continue
-        
-        # Uncomment this part to strip out those RPMs that are in the parent 
+
+        # Uncomment this part to strip out those RPMs that are in the parent
         # repos already
         #
         #parentrepos = []
