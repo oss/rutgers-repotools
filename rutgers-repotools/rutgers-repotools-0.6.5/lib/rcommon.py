@@ -104,16 +104,16 @@ class AppHandler:
             print "No lockfile specified in the configuration for the application"
             sys.exit(1)
         if os.path.isfile(self._lockfilename): 
-            if is_running():
-                remove_lock()
+            if not is_running(self._lockfilename):
+                self.remove_lock(self._lockfilename)
             else:
                 print "Process is currently running. Please wait for it to finish"
         lockers = self.config.options('locks')
         for locker in lockers:
             lockfilename = self.config.get('locks', locker)
             if os.path.isfile(lockfilename):
-                if is_running():
-                    remove_lock()
+                if not is_running(lockfilename):
+                    self.remove_lock(lockfilename)
                 else:
                     print "Process is currently running. Please wait for it to finish"    
                     sys.exit(1)
@@ -122,27 +122,28 @@ class AppHandler:
         """ Create a lock file for this application """
         self.check_lock()
         lockfile = open(self._lockfilename, "w")
-        lockfile.write(os.getpid())
+        lockfile.write(str(os.getpid()))
         
-    def remove_lock(self):
+    def remove_lock(self, lockfilename):
         """ Delete the lock file of this application """
-        if os.path.isfile(self._lockfilename):
-            os.remove(self._lockfilename)
+        if os.path.isfile(lockfilename):
+            os.remove(lockfilename)
     
-    def is_running(self):
-        lockfile = open(self._lockfilename, "r")
+    @staticmethod
+    def is_running(lockfilename):
+        lockfile = open(lockfilename, "r")
         try:
             os.kill(lockfile.readline(), 0)
             lockfile.close()
-            return 1
+            return True
         except:
             lockfile.close()
-            return 0
+            return False
 
     def exit(self, status=0):
         """ Exit from application gracefully """
         if self._lockfilename:
-            self.remove_lock()
+            self.remove_lock(self._lockfilename)
 
         gid = grp.getgrnam(self.groupowner)[2]
         private_dir = self.config.get('repositories', 'repodir_private')
