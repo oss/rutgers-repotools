@@ -104,7 +104,7 @@ class AppHandler:
             print "No lockfile specified in the configuration for the application"
             sys.exit(1)
         if os.path.isfile(self._lockfilename): 
-            if not self.is_running(self._lockfilename):
+            if not is_running(self._lockfilename):
                 self.remove_lock(self._lockfilename)
             else:
                 print "Process is currently running. Please wait for it to finish"
@@ -112,7 +112,7 @@ class AppHandler:
         for locker in lockers:
             lockfilename = self.config.get('locks', locker)
             if os.path.isfile(lockfilename):
-                if not self.is_running(lockfilename):
+                if not is_running(lockfilename):
                     self.remove_lock(lockfilename)
                 else:
                     print "Process is currently running. Please wait for it to finish"    
@@ -129,7 +129,8 @@ class AppHandler:
         if os.path.isfile(lockfilename):
             os.remove(lockfilename)
     
-    def is_running(self, lockfilename):
+    @staticmethod
+    def is_running(lockfilename):
         lockfile = open(lockfilename, "r")
         try:
             os.kill(lockfile.readline(), 0)
