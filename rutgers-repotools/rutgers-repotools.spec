@@ -3,7 +3,7 @@
 Summary:   Dependency check and publish scripts
 Name:      rutgers-repotools
 Version:   0.6.5
-Release:   2.ru6
+Release:   3.ru6
 License:   GPLv2+
 Group:     System Environment/Base
 URL:       http://cvs.rutgers.edu/cgi-bin/viewvc.cgi/trunk/orcan/rutgers-repotools/
@@ -110,6 +110,7 @@ echo More information can be found in the README file.
 %{python_sitelib}/rutgers_repotools-%{version}-py2.6.egg-info
 %config %{_sysconfdir}/cron.daily/depcheck_rutgers
 %config %{_sysconfdir}/cron.daily/depcheck_rutgers6
+%config %{_sysconfdir}/cron.daily/backup_rpmfind.sh
 %config(noreplace) %{_sysconfdir}/depcheck.ignore
 %config(noreplace) %{_sysconfdir}/depcheck6.ignore
 %config(noreplace) %{_sysconfdir}/rutgers-repotools.cfg
@@ -124,6 +125,8 @@ echo More information can be found in the README file.
 
 
 %changelog
+* Thu Apr 25 2013 Jarek Sedlacek <jarek@nbcs.rutgers.edu> 0.6.5-3.ru6
+- Added backup_rpmfind.sh to cron.daily
 * Wed Apr 24 2013 Matt Robinson <mwr54@nbcs.rutgers.edu> 0.6.5-2.ru6
 - fixed making lock file dir
 
