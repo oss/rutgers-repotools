@@ -18,7 +18,7 @@ if "install" in args:
     #file_util.write_file(buildroot + '/var/log/rutgers-repotools/rebuild-repos.log', "")
 
 setup(name         = 'rutgers-repotools',
-      version      = '0.6.5',
+      version      = '0.6.6',
       description  = 'Dependency check and publish scripts',
       author       = 'Orcan Ogetbil',
       author_email = 'oss@oss.rutgers.edu',
@@ -32,7 +32,7 @@ setup(name         = 'rutgers-repotools',
       packages     = ['RUtools'],
       package_dir  = {'RUtools': 'lib'},
       data_files   = [('/etc', ['conf/depcheck.ignore', 'conf/rutgers-repotools.cfg', 'conf/rutgers-repotools-centos6.cfg', 'conf/depcheck6.ignore']),
-                      ('/etc/cron.daily', ['cron/depcheck_rutgers', 'cron/depcheck_rutgers6', 'cron/backup_rpmfind.sh'])],
+                      ('/etc/cron.daily', ['cron/daily_checks', 'cron/depcheck_rutgers', 'cron/depcheck_rutgers6'])],
       scripts      = ['bin/checkrepo',
                       'bin/checkrepo6',
                       'bin/populate-rpmfind-db',
@@ -44,5 +44,7 @@ setup(name         = 'rutgers-repotools',
                       'bin/movepackage6',
                       'bin/pullpackage6',
                       'bin/pushpackage6',
-                      'bin/rebuild-repos6']
+                      'bin/rebuild-repos6',
+	              'bin/automagiccheck.py',
+		      'bin/kojibackup.sh']
      )
