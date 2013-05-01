@@ -3,7 +3,7 @@
 Summary:   Dependency check and publish scripts
 Name:      rutgers-repotools
 Version:   0.6.5
-Release:   4.ru6
+Release:   5.ru6
 License:   GPLv2+
 Group:     System Environment/Base
 URL:       http://cvs.rutgers.edu/cgi-bin/viewvc.cgi/trunk/orcan/rutgers-repotools/
@@ -128,6 +128,9 @@ echo More information can be found in the README file.
 
 
 %changelog
+* Wed May 01 2013 Matt Robinson <mwr54@nbcs.rutgers.edu> 0.6.5-5
+- Fixed an issue with lockfile checking and removed a redundant block of code
+
 * Mon Apr 29 2013 Indraneel Purohit <ip132@nbcs.rutgers.edu> 0.6.5-4.ru6
 - Moved automagiccheck.py and kojibackup.sh to /usr/bin/, added script to call both to cron.daily
 
