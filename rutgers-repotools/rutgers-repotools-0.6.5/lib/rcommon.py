@@ -103,12 +103,6 @@ class AppHandler:
         if self._lockfilename == None:
             print "No lockfile specified in the configuration for the application"
             sys.exit(1)
-        if os.path.isfile(self._lockfilename): 
-            if not AppHandler.is_running(self._lockfilename):
-                AppHandler.remove_lock(self._lockfilename)
-            else:
-                print "Process is currently running. Please wait for it to finish"
-                sys.exit(1)
         lockers = self.config.options('locks')
         for locker in lockers:
             lockfilename = self.config.get('locks', locker)
