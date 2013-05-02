@@ -29,7 +29,7 @@ then
     REPODATA_DIR_DATE=`date -r $REPODATA_DIR \`\`+%a\ -\ %b\ %d,\ %Y\ -\ %H:%M''`
     echo $REPODATA_DIR_DATE >> $P_DIR/$P_DATEFILE
     mv $T_LOG $P_LOG
-    logger -p cron.notice -t $0 `tail -n 2  $P_LOG`        # log it
+    logger -p cron.notice -t $0 "`tail -n 2  $P_LOG`"        # log it
 
     tail -n 30 $P_LOG > $P_LOG.short
     rm -f $P_LOG.short
@@ -40,7 +40,7 @@ else
     mv $T_LOG $E_LOG
     tail -n 30 $E_LOG > $E_LOG.short
     rm -f $E_LOG.short
-    logger -p cron.err -t $0 `tail -n 5  $E_LOG`   # write to syslog on failure
+    logger -p cron.err -t $0 "`tail -n 5  $E_LOG`"   # write to syslog on failure
     chmod -R 755 $P_DIR
     chown -R root:root $P_DIR
     OUTOFDATE=`find /limbus/centos/status -mtime -1 -name 'FEDORA_LAST_MIRROR*' | wc -l`
