@@ -24,6 +24,7 @@ import sys
 import os
 import logging
 import string
+import time
 
 import genrepo
 import populatedb
@@ -90,6 +91,10 @@ def run_checkrepo(my_config_file='/etc/rutgers-repotools.cfg'):
         myapp.exit(1)
 
     myapp.init_logger(verbosity, options.quiet)
+	
+	# Print a nice timestamp at the beginning.
+	localtime = time.asctime(time.localtime(time.time()))
+	myapp.logger.info("Timestamp:", localtime)
                 
     results = checkdep.doit(myapp, check_repo)
     timerun = myapp.time_run()
