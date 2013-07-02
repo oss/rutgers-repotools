@@ -84,7 +84,7 @@ def populate_database(dbase, content):
         """ % (content['rpm_id'], filename, ifile['flags'], ifile['digest'], 
                ifile['size'], content['build_id'])
         # Maybe we have to use .encode('utf-8') on filenames. 
-	# Not necessary for now.
+        # Not necessary for now.
         try: # Normally, this shouldn't fail.
             dbase.query(filequery)
         except _mysql_exceptions.IntegrityError:
@@ -158,12 +158,12 @@ def remove_old(app, kojisession, dbase):
     for build_id in build_ids_in_db:
         if not build_id in build_ids_in_repo:
             List_query = """ select nvr, arch from Packages where
-	    build_id = %s
-	    """ % (build_id)
+            build_id = %s
+            """ % (build_id)
             dbase.query(List_query)
             res = dbase.store_result()
             rpms2remove = res.fetch_row(maxrows=0)
-	    
+
             for table in ['Packages', 'Distribution', 'Files', 'Requires', 
                           'Provides', 'Obsoletes', 'Conflicts', 
                           'SpecChangeLogs', 'SoftwareChangeLogs']:

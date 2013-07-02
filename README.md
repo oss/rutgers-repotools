@@ -42,7 +42,8 @@ Then the database can be accessed via
      mysql -uroji rpmfind -p
 ```
 If the database is to be accessed by a remote machine (e.g. that runs rpm2php),
-the  necessary privileges need to be provided.
+the necessary privileges need to be provided. As of this writing, this suite of
+tools lives on omachi.
 
 Important: **Please edit the /etc/rutgers-repotools.cfg file for all
 options!!!**
@@ -50,9 +51,9 @@ options!!!**
 Currently, we have 4 scripts: checkrepo, populate-rpmfind-db, pushpackage,
 rebuild-repos. Their outputs are logged in `/var/log/rutgers-debuginfo/`.
 
-
-checkrepo
----------
+Scripts
+-------
+### checkrepos
 Checks the sanity of the given repo. It makes use of repoclosure output from
 yum-utils. This script is run daily as a cron job. However it can be run
 stond-alone, An email is sent to OSS by default if a problem, i.e. a broken
@@ -72,8 +73,7 @@ the broken dependencies properly. The script has the following usage:
        -q, --quiet    Don't output anything
 ```
 
-populate-rpmfind-db
--------------------
+### populate-rpmfind-db
 Updates or rebuilds from scratch the rpmfind repository, that will be accessed by
 rpm2php. Rebuilding from scratch assumes the existence of a running koji server.
 ```
@@ -85,8 +85,7 @@ rpm2php. Rebuilding from scratch assumes the existence of a running koji server.
        -r, --rebuild  Cleans and rebuilds the whole database.
 ```
 
-pushpackage
------------
+### pushpackage
 This main push script that does all the magic. This script takes package(s) from
 a given repo (tag) and copies (tags) it to another. It does not erase
 the existing tags. It also checks the dependencies of the package(s) against the
@@ -116,8 +115,7 @@ Example:
 ```
 
 
-pullpackage
------------------
+### pullpackage
 This is the brother of pushpackage. It is used to remove packages from the
 specified repos.
 ```
@@ -135,8 +133,7 @@ specified repos.
        -v, --verbose  Verbose output
 ```
 
-movepackage
------------------
+### movepackage
 Wrapper around pullpackage and pushpackage. It just pushes the repo to
 `to_repo` and pulls it from `from_repo`.
 ```
@@ -155,8 +152,7 @@ Wrapper around pullpackage and pushpackage. It just pushes the repo to
        -v, --verbose  Verbose output
 ```
 
-rebuild-repos
--------------
+### rebuild-repos
 This has the capability of recreating all the repos we publish from scratch.
 What it does is: It asks koji for the latest packages from a specific tag,
 such as 'centos5-rutgers', 'centos5-rutgers-testing', 'centos5-rutgers-unstable'.
@@ -183,3 +179,10 @@ http://git.fedoraproject.org/git/mash
 
 The rest is written by Orcan Ogetbil, Jarek Sedlacek, and Kaitlin Poskaitis of Rutgers'
 Open System Solutions.
+
+For a list of recent changes, see the CHANGELOG.
+
+License
+=======
+This software is licensed under the GNU General public license. See LICENSE
+for more info.

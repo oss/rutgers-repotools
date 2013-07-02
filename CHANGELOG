@@ -1,0 +1,127 @@
+2013-7-2
+	- added more verbose output when operating system errors occur
+2013-4-18 (0.6.5)
+	- updated to check if locks can be deleted (if the process that created
+	the lock is no longer running).
+2013-2-5 (0.6.4)
+	- updated to chown package dirs if owned by wrong group after
+	push/pull/etc
+2012-11-07 (0.6.2)
+	- updated to use the group packagepushers, not studsys or sysprog
+2012-06-13 (0.6.1)
+	- updated previous revision to account for tag inheritance
+2012-02-22 (0.6.0)
+	- updated pushpackage to pull old versions when pushing new
+	- updated everything to work for centos 5 and 6 side by side
+2011-01-13: (0.5.1)
+	- Update depcheck.ignore
+2010-11-11:
+	- Swap the order of pull and push in movepackage. push needs to come
+	  first to prevent a dependency breakage through inheritance.
+2010-11-05: (0.5.0)
+	- Update depcheck.ignore
+	- Remove publishrepos from the config file. These are now properly
+	  calculated within the scripts
+	- Only create 1 SSL connection with koji
+	- pushpackage syntax is modified. The package moving and removal duties
+	  are handled by the new scripts pullpackage and movepackage
+	- Colored log into stdout
+	- Plain log for use of rpm2php
+2010-10-08:
+	- Do depcheck on the from_repo if the package is removed from there and
+	  if it is really necessary
+2010-09-21:
+	- Update depcheck.ignore
+	- maxBytes on logs is set to 1000000
+	- Store srpm_id of all packages in the database
+	- When a lock is set on any of the programs, the other programs will not
+	  run
+	- Fix miner typo in genrepo.py that caused the debuginfo repo to be
+	  to be rebuilt from scratch on each run
+2010-09-07: (0.4.6)
+	- checkrepo: Ability to check the dependency sanity of the upstream repo
+	  only.
+	- Store filehashes and flags in rpmfind database
+	- Update genrepo code to incorporate the new CentOS repo setup
+	- More verbose output when rebuilding a repo
+2010-08-16:
+	- Extend exception range in push.py
+	- Fix minor typo in rcommon.py
+2010-08-12: (0.4.5)
+	- Move the contents of the wrapper scripts into __init__.py. Since this
+	  file is byte-compiled, things should work faster.
+	- push.py should not be executable
+	- More PEP8 clean-ups
+	- Document all functions and classes in the code. May need more love
+	- Increase backup count for log files to 8
+2010-08-11:
+	- Put lockfile locations into the config file
+	- The applications are now instances of AppHandler object and the log,
+	  lock mechanisms, user verification, koji sessions, etc are all handled
+	  via this class
+	- Drop very many irrelevant import's and global variables. Things should
+	  run faster now.
+	- Remove --nolog option from checkrepo
+	- Fix permission issue with the checkrepo.log file
+	- Start cleaning-up the code to match PEP8 standards.
+	- Move pushing work from pushpackage to push.py
+2010-07-27: (0.4.1)
+	- Minor fixes in sendspam.py
+	- Add more rpm2php specific settings to the config file
+2010-07-22:
+	- Add missing "import sys" to sendspam.py. GRRRRR!
+	- Fix typo in rcommon.py
+2010-07-22: (0.4.0)
+	- Make the default output to stdout less verbose.
+	- Allow multiple groups to run the scripts, defined as in the config file
+	- Lock mechanism to block multiple instances of running scripts
+	- Scan for software changelog file and store it in the database
+	- Add a AppHandler class to handle timeRun, locking and exiting
+	- --removeoldtag now rebuilds both old and the new repo as it should
+2010-07-02: (0.3.0)
+	- Add quiet mode to the checkrepo script
+	- Run the cron job checkrepo in quiet mode
+	- Add some more dep breakages to the ignore list
+	- Implemented a config file /etc/rutgers-repotools.cfg that contains all
+	  the relevant configuration options
+	- New command: populate-rpmfind-db, creates a database to be used by rpm2php
+	- New command: rebuild-repos, to rebuild all repos we publish
+	- Obsoleted command: rebuild-debugrepo, functionality moved to rebuild-repos
+	- Migrated to distutils' setup.py
+2010-06-03: (0.2.2)
+	- Include a check not to run the scripts as root
+	- Include a check to run the scripts with gid "studsys"
+2010-05-24:
+	- Clean-up changelog code, and eliminate the possibility of an IndexError
+2010-05-21:
+	- Add changelog information to the outgoing email
+2010-05-12: (0.2.1)
+	- Add more checks on permissions of the log files
+	- Fix minor typos here and there
+	- Slightly more verbose emails
+2010-04-15:
+	- Add some documentation in the README file
+2010-04-14: (0.2.0)
+	- Add logging facility
+2010-04-02:
+	- More verbose output from the pushpackage script about debuginfo mechanism.
+2010-04-02: (0.1.9)
+	- Feature: debuginfo repo support:
+	  o pushpackage script has an additional duty of pushing the debuginfo
+	    packages to the rutgers-debuginfo repo.
+	  o rebuild-debugrepo script regenerates the rutgers-debuginfo repo.
+	    Note that this will pull in only the latest builds.
+	- Improvement: /etc/depcheck.ignore is smarter with wilder wildcards (e.g. foo-*)
+	- Bugfix: Don't remove the non-existing tmprepodir when running checkrepo
+2010-03-22:
+	- Add 'all' as an argument, which will try to push the newest packages of
+	  the from_repo to the to_repo
+2010-03-19: (0.1.2)
+	- Fix minor typos.
+	- Check whether the target packages exist in the to_repo. Fail if they do.
+	- Move the check for existence of the target packages in the from_repo
+	  to before the dependency checking stage.
+2010-03-19: (0.1.1)
+	- Handle noarch packages.
+2010-03-19: (0.1)
+	- Initial release.

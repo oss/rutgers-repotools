@@ -48,7 +48,7 @@ class AppHandler:
             self._lockfilename = self.config.get("locks", self._callername)
         except ConfigParser.NoOptionError:
             self._lockfilename = None
-	    #print "We were called from " + self._callername 
+        #print "We were called from " + self._callername 
 
         self._start_time = time.time()
         self.logger = None

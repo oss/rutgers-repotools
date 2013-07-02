@@ -1,3 +1,6 @@
 # Ignore temporary files
 *.swp
 *.tmp
+
+# For ourselves
+TODO.md

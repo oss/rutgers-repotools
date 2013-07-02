@@ -1,10 +1,13 @@
-""" Library to generate rutgers rpm repositories """
+""" Library to generate Rutgers rpm repositories """
 #
 ###############################################################################
 #Programmer: Orcan Ogetbil    orcan@nbcs.rutgers.edu                          #
 #Date: 09/10/2010                                                             #
 #Filename: genrepo.py                                                         #
 #                                                                             #
+#ChangeLog:                                                                   #
+# * 02 Jul 2013 - Kyle Suarez <kds124@nbcs.rutgers.edu>                       #
+# - Added additional log messages during unexpected errors                    #
 #                                                                             #
 #       Copyright 2010 Orcan Ogetbil                                          #
 #                                                                             #
@@ -36,7 +39,8 @@ def mkdir_p(path):
     except OSError, exc:
         if exc.errno == errno.EEXIST:
             pass
-        else: raise
+        else:
+            raise
 
 def gen_repos(app, repos, builddebug=False):
     """ Generates the repos in a temporary location. Then replaces the old repos
@@ -53,12 +57,16 @@ def gen_repos(app, repos, builddebug=False):
         create_debug_repo(app, kojisession, repos_tmpdir)
         app.logger.info("All done creating the debug repo.")
         app.logger.info("Now replace old repo with the new one.")
+        debugpath = repos_dir + "/" + debugrepo + "/" + distver
         try:
-            shutil.rmtree(repos_dir + "/" + debugrepo + "/" + distver)
+            shutil.rmtree(debugpath)
         except OSError, exc:
             if exc.errno == errno.ENOENT:
+                app.logger.warning("No such file or directory:", debugpath)
                 pass
-            else: raise
+            else:
+                app.logger.error("Unexpected OS error. See stack trace for details.")
+                raise
         shutil.move(repos_tmpdir + "/debug/" + distver, repos_dir + "/" + debugrepo + "/" + distver)
 
     if repos:
@@ -67,12 +75,22 @@ def gen_repos(app, repos, builddebug=False):
         app.logger.info("All done creating repos.")
         app.logger.info("Now replace old repos with the new ones.")
         for repo in repos:
+            infopath = repos_dir + "/" + repo + "/" + distver
             try:
-                shutil.rmtree(repos_dir + "/" + repo + "/" + distver)
+                shutil.rmtree(infopath)
             except OSError, exc:
                 if exc.errno == errno.ENOENT:
+                    app.logger.warning("No such file or directory:", infopath)
                     pass
-                else: raise
+                elif exc.errno == errno.EACCES:
+                    app.logger.error("Access permission denied to", infopath)
+                    app.logger.error("Fatal error. Stopping now; exception being raised. See stack trace.")
+                    app.logger.error("You should check the group permissions for", infopath, "and try pushing again.")
+                    raise
+                else:
+                    # Just in case. You never know
+                    app.logger.error("Unexpected OS error while replacing old repos.")
+                    raise
             shutil.move(repos_tmpdir + "/" + repo + "/" + distver, repos_dir + "/" + repo + "/" + distver)
 
     app.logger.info("Cleaning up.")
@@ -140,7 +158,9 @@ def create_debug_repo(app, kojisession, repos_tmpdir):
             # Same RPM might exist in multiple repos (stable, testing)
             if exc.errno == errno.EEXIST:
                 pass
-            else: raise
+            else:
+                app.logger.error("Unexpected OS error while making the debug repos.")
+                raise
 
     for archdir in archs:
         if fresh:

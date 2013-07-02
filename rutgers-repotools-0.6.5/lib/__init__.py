@@ -201,7 +201,7 @@ def run_pullpackage(my_config_file='/etc/rutgers-repotools.cfg'):
 
     # Print a nice timestamp at the beginning.
     localtime = time.asctime(time.localtime(time.time()))
-    myapp.logger.info("Timestamp: pull started on", localtime)
+    myapp.logger.info("Pull started on", localtime)
 
     # The real pull.
     pullpackage(myapp, mail, options.test, options.force, from_repo, packages)
@@ -417,7 +417,7 @@ def run_pushpackage(my_config_file="/etc/rutgers-repotools.cfg"):
 
     # Print a nice timestamp at the beginning.
     localtime = time.asctime(time.localtime(time.time()))
-    myapp.logger.info("Timestamp: push started on", localtime)
+    myapp.logger.info("Push started on", localtime)
 
     # The real push.
     pushpackage(myapp, mail, options.test, options.force, to_repo, packages)
