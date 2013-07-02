@@ -41,11 +41,11 @@ Then the database can be accessed via
 ```
      mysql -uroji rpmfind -p
 ```
-If the database is to be accessed by a remote machine (e.g. that runs rpm2php), the 
-necessary privileges need to be provided.
+If the database is to be accessed by a remote machine (e.g. that runs rpm2php),
+the  necessary privileges need to be provided.
 
-Important:  
-**Please edit the /etc/rutgers-repotools.cfg file for all options!!!**
+Important: **Please edit the /etc/rutgers-repotools.cfg file for all
+options!!!**
 
 Currently, we have 4 scripts: checkrepo, populate-rpmfind-db, pushpackage,
 rebuild-repos. Their outputs are logged in `/var/log/rutgers-debuginfo/`.

@@ -91,7 +91,7 @@ def run_checkrepo(my_config_file='/etc/rutgers-repotools.cfg'):
         myapp.exit(1)
 
     myapp.init_logger(verbosity, options.quiet)
-	
+
     results = checkdep.doit(myapp, check_repo)
     timerun = myapp.time_run()
     if results:
@@ -180,7 +180,7 @@ def run_pullpackage(my_config_file='/etc/rutgers-repotools.cfg'):
 
     if len(args) < 2:
         myapp.logger.error("Error: Too few arguments: " + str(args))
-	myapp.logger.error("Run with --help to see correct usage")
+        myapp.logger.error("Run with --help to see correct usage")
         myapp.exit(1)
 
     if options.nomail:
@@ -199,11 +199,11 @@ def run_pullpackage(my_config_file='/etc/rutgers-repotools.cfg'):
         myapp.logger.error("Error: Invalid from_repo: " + from_repo)
         myapp.exit(1)
 
-	# Print a nice timestamp at the beginning.
-	localtime = time.asctime(time.localtime(time.time()))
-	myapp.logger.info("Timestamp: pull started on", localtime)
+    # Print a nice timestamp at the beginning.
+    localtime = time.asctime(time.localtime(time.time()))
+    myapp.logger.info("Timestamp: pull started on", localtime)
 
-	# The real pull.
+    # The real pull.
     pullpackage(myapp, mail, options.test, options.force, from_repo, packages)
 
     timerun = myapp.time_run()
@@ -319,7 +319,7 @@ def run_movepackage(my_config_file='/etc/rutgers-repotools.cfg'):
 
     if len(args) < 3:
         myapp.logger.error("Error: Too few arguments: " + str(args))
-	myapp.logger.error("Run with --help to see correct usage")
+        myapp.logger.error("Run with --help to see correct usage")
         myapp.exit(1)
 
     if options.nomail:
@@ -345,8 +345,8 @@ def run_movepackage(my_config_file='/etc/rutgers-repotools.cfg'):
         myapp.logger.error("Error: from_repo cannot be equal to to_repo")
         myapp.exit(1)
 
-	# Pull/push print their own timestamps; no need for one here.
-	# To execute the move, push then pull.
+    # Pull/push print their own timestamps; no need for one here.
+    # To execute the move, push then pull.
     pushpackage(myapp, mail, options.test, options.force, to_repo, packages,
                 True)
     pullpackage(myapp, mail, options.test, options.force, from_repo, packages,
@@ -395,7 +395,7 @@ def run_pushpackage(my_config_file="/etc/rutgers-repotools.cfg"):
     myapp.init_logger(verbosity)
     if len(args) < 2:
         myapp.logger.error("Error: Too few arguments: " + str(args))
-	myapp.logger.error("Run with --help to see correct usage")
+        myapp.logger.error("Run with --help to see correct usage")
         myapp.exit(1)
 
     if options.nomail:
@@ -415,11 +415,11 @@ def run_pushpackage(my_config_file="/etc/rutgers-repotools.cfg"):
         myapp.logger.error( "Error: Invalid to_repo: " + to_repo)
         myapp.exit(1)
 
-	# Print a nice timestamp at the beginning.
-	localtime = time.asctime(time.localtime(time.time()))
-	myapp.logger.info("Timestamp: push started on", localtime)
+    # Print a nice timestamp at the beginning.
+    localtime = time.asctime(time.localtime(time.time()))
+    myapp.logger.info("Timestamp: push started on", localtime)
 
-	# The real push.
+    # The real push.
     pushpackage(myapp, mail, options.test, options.force, to_repo, packages)
 
     timerun = myapp.time_run()
