@@ -1,5 +1,9 @@
-2013-7-2
+2013-07-03
+	- extra checks on exit to make sure owner perms are correct and in
+	right group
+2013-07-02
 	- added more verbose output when operating system errors occur
+	- (all changes after this point are not yet pushed to stable on omachi)
 2013-4-18 (0.6.5)
 	- updated to check if locks can be deleted (if the process that created
 	the lock is no longer running).
