@@ -138,11 +138,20 @@ class AppHandler:
 
     def exit(self, status=0):
         """ Exit from application gracefully """
+        self.logger.info("Beginning exit and cleanup.")
         if self._lockfilename:
             AppHandler.remove_lock(self._lockfilename)
 
         gid = grp.getgrnam(self.groupowner)[2]
         private_dir = self.config.get('repositories', 'repodir_private')
+
+        # Check to make sure current process is in correct group
+        allgroups = os.getgroups()
+        if gid in allgroups:
+            self.logger.info("Group privileges look okay.")
+        else:
+            self.logger.warning("Current process not in proper group (" + gid + "); chown required")
+        
         if os.stat(private_dir)[5] != gid:
             self.logger.info("Chowning " + private_dir + " to group " + self.groupowner)
             # Recursively chown private_dir
@@ -151,6 +160,8 @@ class AppHandler:
                     os.chown(os.path.join(root, path), -1, gid, follow_symlinks=false)
                 for path in files:
                     os.chown(os.path.join(root, path), -1, gid, follow_symlinks=false)
+        else:
+            self.logger.info("Group id is + " + gid + "; no chowning needed")
                     
 
         # Make sure the log file ends up with the right group owner:
