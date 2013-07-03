@@ -171,6 +171,13 @@ replaced by the new one.
        -v, --verbose  Verbose output
 ```
 
+Changes
+=======
+**Important.** Some minor changes were added in July 2013; these include more
+verbose error messages as well as some extra group permission checks on exit.
+They have yet to be pushed to stable on omachi. If you get around to adding
+them, please edit this file.
+
 Authors
 =======
 src/checkdep.py is heavily modified version of Fedora's spam-o-matic from mash
