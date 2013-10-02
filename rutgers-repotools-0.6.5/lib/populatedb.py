@@ -28,6 +28,7 @@ from MySQLdb.constants import FIELD_TYPE
 
 def populate_database(dbase, content):
     """ Add new entries to the database with the given content """
+# TODO
     myquery  = " INSERT INTO Packages "
     myquery += "(package_id, build_id, rpm_id, srpm_id, build_name, "
     myquery += "nvr, Name, Version, Rel, "
@@ -125,6 +126,7 @@ def populate_database(dbase, content):
                 'softwarechangelog'].encode('utf-8')
         except UnicodeDecodeError:
             pass
+        # TODO
         softwareclogquery = """ INSERT INTO SoftwareChangeLogs
         (build_id, Filename, Text) VALUES
         (%s      , "%s"    , "%s")
@@ -135,7 +137,8 @@ def populate_database(dbase, content):
 
 def remove_old(app, kojisession, dbase):
     """ Delete package entries from database """
-    dbase.query("select distinct build_id from Packages")
+    # Queries Koji. All builds in the database that don't exist in Koji get deleted.
+    dbase.query("SELECT DISTINCT build_id FROM Packages")
     res = dbase.store_result()
     dat = res.fetch_row(maxrows=0)
     build_ids_in_db = []
@@ -157,7 +160,7 @@ def remove_old(app, kojisession, dbase):
         build_ids_in_repo.append(build['build_id'])
     for build_id in build_ids_in_db:
         if not build_id in build_ids_in_repo:
-            List_query = """ select nvr, arch from Packages where
+            List_query = """ SELECT nvr, arch FROM Packages WHERE
             build_id = %s
             """ % (build_id)
             dbase.query(List_query)
@@ -179,7 +182,8 @@ def remove_old(app, kojisession, dbase):
 def fetch_repo(app, kojisession, dbase):
     """ Get latests builds from koji and process their information.
     Then trigger populate_database(database, information)"""
-    dbase.query("select distinct build_id from Packages")
+    #TODO
+    dbase.query("SELECT DISTINCT build_id FROM Packages")
     res = dbase.store_result()
     dat = res.fetch_row(maxrows=0)
     build_ids_in_db = []
@@ -207,7 +211,7 @@ def fetch_repo(app, kojisession, dbase):
             dist_info.append(tag['name'])
         
         if build_id in build_ids_in_db:
-            tagquery  = "select distinct repo from Distribution where build_id="
+            tagquery  = "SELECT DISTINCT repo FROM Distribution WHERE build_id="
             tagquery += str(build_id)
             dbase.query(tagquery)
             res = dbase.store_result()
@@ -237,8 +241,8 @@ def fetch_repo(app, kojisession, dbase):
                         #if (rpm['arch'] != 'src' and 
                         #    not rpm['name'].endswith('-debuginfo')):
                         if not rpm['name'].endswith('-debuginfo'):
-                            removetagquery = """ delete from Distribution where
-                            rpm_id = %s and repo = "%s"
+                            removetagquery = """ DELETE FROM Distribution WHERE
+                            rpm_id = %s AND repo = "%s"
                             """ % (rpm['id'], tag)
                             app.logger.info("Tag: " + tag + 
                                             " removed from package: " + 
@@ -366,10 +370,12 @@ def get_software_clog(rpmfile):
 
 def clean_database(app, dbase):
     """ Empty the database """
-    dropquery  = "DROP TABLES IF EXISTS Distribution, Requires, Provides, "
-    dropquery += "Obsoletes, Conflicts, Files, Packages, SpecChangeLogs, "
-    dropquery += "SoftwareChangeLogs"
-    dbase.query(dropquery)
+    dropquery = []
+    dropquery.append("DROP TABLES IF EXISTS ChangeLogs, Conflicts, ")
+    dropquery.append("Distribution, Files, Obsoletes, Packages, Provides, ")
+    dropquery.append("Requires, SoftwareChangeLogs, SpecChangeLogs;")
+
+    dbase.query("".join(dropquery))
     app.logger.info("Tables removed from the database")
 
 def create_tables(app, dbase):
@@ -417,12 +423,17 @@ def create_tables(app, dbase):
     (build_id int(11), PRIMARY KEY(build_id), Filename varchar(255), 
     Text text)"""
     dbase.query(SoftwareChangeLogs_query)
+    SpecChangeLogs_query = """CREATE TABLE IF NOT EXISTS SpecChangeLogs (ID 
+    int(15) AUTO_INCREMENT, build_id int(11), Date int(11),
+    Author varchar(255), PRIMARY KEY(ID), Text text, rpm_id int (11));"""
+    dbase.query(SpecChangeLogs_query)
     
     app.logger.info("Tables Created (if they didn't exist)")
 
 
 def update_db(app, clean=False, create=False, removeoldpkg=True):
     """ Wrapper function that governs everything """
+    #TODO
     my_conv = { FIELD_TYPE.LONG: int }
     db_host = app.config.get("rpm2phpdb", "host")
     db_user = app.config.get("rpm2phpdb", "user")
