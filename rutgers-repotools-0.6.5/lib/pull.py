@@ -22,7 +22,7 @@ the from_repo and copies the corresponding debuginfo subpackages. """
 
 
 def check_packages(app, kojisession, packages, from_repo):
-    """ Check if the given packages are really there 
+    """ Check if the given packages are really there
     If they are, return the tags associated with them"""
     clean = True
 
@@ -30,7 +30,7 @@ def check_packages(app, kojisession, packages, from_repo):
         if package.count("-") < 2 or package[0] == "-" or package[-1] == "-":
             app.logger.error("Error: Invalid NVR fromat: " + package)
             clean = False
-            
+
     if clean == False:
         app.exit(2)
 
@@ -50,7 +50,7 @@ def check_packages(app, kojisession, packages, from_repo):
             app.logger.error("Error: " + package + " not found in koji.")
             clean = False
         pkgstags.append(pkgtags)
-    
+
     if clean == False:
         app.exit(2)
 
@@ -71,10 +71,10 @@ def debug_check(app, packages):
 
     app.logger.info("No debuginfo packages.")
     return False
-    
+
 
 def pull_packages(app, kojisession, packages, from_repo, user):
-    """ Untag from the repos. Return a message with the results 
+    """ Untag from the repos. Return a message with the results
     to be emailed """
     kojisession.multicall = True
 
@@ -86,7 +86,7 @@ def pull_packages(app, kojisession, packages, from_repo, user):
         kojisession.untagBuildBypass(from_repo, package)
         message += package+"\n"
         packagelist += package+", "
-    
+
     # Truncate the trailing comma
     packagelist = packagelist[:-2]
 

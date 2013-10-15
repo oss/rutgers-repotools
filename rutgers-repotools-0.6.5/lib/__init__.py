@@ -55,18 +55,18 @@ def run_checkrepo(my_config_file='/etc/rutgers-repotools.cfg'):
     usage = "usage: %prog [options] <repo>\n\n"
     usage += "  <repo>         one of: " + string.join(repos, " ")
     parser = OptionParser(usage)
-    parser.add_option("--nomail", 
-                      action="store_true", 
+    parser.add_option("--nomail",
+                      action="store_true",
                       help="Do not send email notification")
-    parser.add_option("-v", "--verbose", 
-                      default=False, 
-                      action="store_true", 
+    parser.add_option("-v", "--verbose",
+                      default=False,
+                      action="store_true",
                       help="Verbose output")
-    parser.add_option("-q", "--quiet", 
-                      default=False, 
-                      action="store_true", 
+    parser.add_option("-q", "--quiet",
+                      default=False,
+                      action="store_true",
                       help="Don't output anything")
-    
+
     (options, args) = parser.parse_args(sys.argv[1:])
 
     if options.nomail:
@@ -78,7 +78,7 @@ def run_checkrepo(my_config_file='/etc/rutgers-repotools.cfg'):
         verbosity = logging.DEBUG
     else:
         verbosity = logging.INFO
-                        
+
     if len(args) != 1:
         print "Error: Invalid number of arguments: ", args
         print "I only need 1 <repo> argument"
@@ -115,16 +115,16 @@ def run_populate_rpmfind_db(my_config_file='/etc/rutgers-repotools.cfg'):
     os.umask(002)
     myapp = rcommon.AppHandler(verifyuser=True,config_file=my_config_file)
     parser = OptionParser("usage: %prog [options]")
-    parser.add_option("-r", "--rebuild", 
-                      default=False, 
-                      action="store_true", 
+    parser.add_option("-r", "--rebuild",
+                      default=False,
+                      action="store_true",
                       help="Cleans and rebuilds the whole database.")
-    parser.add_option("-v", 
-                      "--verbose", 
-                      default=False, 
-                      action="store_true", 
+    parser.add_option("-v",
+                      "--verbose",
+                      default=False,
+                      action="store_true",
                       help="Verbose output")
-    
+
     (options, args) = parser.parse_args(sys.argv[1:])
     myapp.create_lock()
 
@@ -137,7 +137,7 @@ def run_populate_rpmfind_db(my_config_file='/etc/rutgers-repotools.cfg'):
 
     myapp.logger.info("Populating rpmfind database...")
     populatedb.update_db(myapp, options.rebuild, options.rebuild)
-    
+
     timerun = myapp.time_run()
     myapp.logger.info("\nSuccess! Time run: " + str(timerun) + " s")
 
@@ -153,21 +153,21 @@ def run_pullpackage(my_config_file='/etc/rutgers-repotools.cfg'):
     usage += "  <from_repo>     one of: " + string.join(from_repos, " ") + "\n"
     usage += "  <package(s)>    either in NVR format"
     parser = OptionParser(usage)
-    parser.add_option("--nomail", 
-                      action="store_true", 
+    parser.add_option("--nomail",
+                      action="store_true",
                       help="Do not send email notification")
-    parser.add_option("-f", "--force", 
-                      action="store_true", 
+    parser.add_option("-f", "--force",
+                      action="store_true",
                       help="Do not do dependency checking")
-    parser.add_option("-t", "--test", 
-                      default=False, 
-                      action="store_true", 
+    parser.add_option("-t", "--test",
+                      default=False,
+                      action="store_true",
                       help="Do the dependency checking and exit. No actual pulls are made.")
-    parser.add_option("-v", "--verbose", 
-                      default=False, 
-                      action="store_true", 
+    parser.add_option("-v", "--verbose",
+                      default=False,
+                      action="store_true",
                       help="Verbose output")
-    
+
     (options, args) = parser.parse_args(sys.argv[1:])
     myapp.create_lock()
 
@@ -214,12 +214,12 @@ def run_pullpackage(my_config_file='/etc/rutgers-repotools.cfg'):
 
     myapp.exit(0)
 
-def pullpackage(myapp, mail, test, force, from_repo, 
+def pullpackage(myapp, mail, test, force, from_repo,
                 packages, checkdep_from_repo = False):
     """ The actual puller."""
     from_repos = myapp.config.get("repositories", "allrepos").split()
     user = myapp.username
-    relver = myapp.config.get("repositories", "distver")
+    relver = myapp.distver
     distname = myapp.config.get("repositories", "distname")
     kojisession = myapp.get_koji_session(ssl = True)
 
@@ -227,7 +227,7 @@ def pullpackage(myapp, mail, test, force, from_repo,
 
     # We only need to depcheck the from_repo if it does not inherit
     # from parent repos that the packages are tagged with
-    
+
     from_indices = []
     for pkgtags in pkgstags:
         indices = []
@@ -251,14 +251,14 @@ def pullpackage(myapp, mail, test, force, from_repo,
     if test:
         return
 
-    pullresults = pull.pull_packages(myapp, kojisession, packages, 
-                                     distname + relver + "-" + from_repo, 
+    pullresults = pull.pull_packages(myapp, kojisession, packages,
+                                     distname + relver + "-" + from_repo,
                                      user)
 
     # We are not exposing the build repos anymore. So create our own repo
     myapp.logger.info("Next, regenerate repositories and expose.")
 
-    dontpublishrepos = myapp.config.get("repositories", 
+    dontpublishrepos = myapp.config.get("repositories",
                                         "dontpublishrepos").split()
     repostodebug = myapp.config.get("repositories", "repostodebug").split()
 
@@ -274,7 +274,7 @@ def pullpackage(myapp, mail, test, force, from_repo,
 
     if repo_built:
         populatedb.update_db(myapp, False, False)
-        
+
 
     if mail:
         timerun = myapp.time_run()
@@ -361,7 +361,7 @@ def run_movepackage(my_config_file='/etc/rutgers-repotools.cfg'):
     myapp.exit(0)
 
 
-def run_pushpackage(my_config_file="/etc/rutgers-repotools.cfg"):
+def run_pushpackage(distversion, my_config_file="/etc/rutgers-repotools.cfg"):
     """ Wrapper function to publish packages. """
     os.umask(002)
     myapp = rcommon.AppHandler(verifyuser=True,config_file=my_config_file)
@@ -370,21 +370,21 @@ def run_pushpackage(my_config_file="/etc/rutgers-repotools.cfg"):
     usage += "  <to_repo>       one of: " + string.join(to_repos, " ") + "\n"
     usage += "  <package(s)>    either in NVR format"
     parser = OptionParser(usage)
-    parser.add_option("--nomail", 
-                      action="store_true", 
+    parser.add_option("--nomail",
+                      action="store_true",
                       help="Do not send email notification")
-    parser.add_option("-f", "--force", 
-                      action="store_true", 
+    parser.add_option("-f", "--force",
+                      action="store_true",
                       help="Do not do dependency checking")
-    parser.add_option("-t", "--test", 
-                      default=False, 
-                      action="store_true", 
+    parser.add_option("-t", "--test",
+                      default=False,
+                      action="store_true",
                       help="Do the dependency checking and exit. No actual pushes are made.")
-    parser.add_option("-v", "--verbose", 
-                      default=False, 
-                      action="store_true", 
+    parser.add_option("-v", "--verbose",
+                      default=False,
+                      action="store_true",
                       help="Verbose output")
-    
+
     (options, args) = parser.parse_args(sys.argv[1:])
     myapp.create_lock()
 
@@ -431,13 +431,13 @@ def run_pushpackage(my_config_file="/etc/rutgers-repotools.cfg"):
     myapp.exit(0)
 
 
-def pushpackage(myapp, mail, test, force, to_repo, packages, 
+def pushpackage(myapp, mail, test, force, to_repo, packages,
                 checkdep_to_repo = False):
 
     """ The actual pusher. """
     to_repos = get_publishrepos(myapp)
     user = myapp.username
-    relver = myapp.config.get("repositories", "distver")
+    relver = myapp.distver
     distname = myapp.config.get("repositories", "distname")
     kojisession = myapp.get_koji_session(ssl = True)
     pkgstags = push.check_packages(myapp, kojisession, packages, to_repo)
@@ -470,8 +470,8 @@ def pushpackage(myapp, mail, test, force, to_repo, packages,
 
 
 
-    pushresults = push.push_packages(myapp, kojisession, packages, 
-                                     distname + relver + "-" + to_repo, 
+    pushresults = push.push_packages(myapp, kojisession, packages,
+                                     distname + relver + "-" + to_repo,
                                      user,test)
 
 
@@ -480,7 +480,7 @@ def pushpackage(myapp, mail, test, force, to_repo, packages,
         # We are not exposing the build repos anymore. So create our own repo
         myapp.logger.info("Next, regenerate repositories and expose.")
 
-        dontpublishrepos = myapp.config.get("repositories", 
+        dontpublishrepos = myapp.config.get("repositories",
                                             "dontpublishrepos").split()
         repostodebug = myapp.config.get("repositories", "repostodebug").split()
 
@@ -496,7 +496,7 @@ def pushpackage(myapp, mail, test, force, to_repo, packages,
 
         if repo_built:
             populatedb.update_db(myapp, False, False)
-            
+
 
     if mail:
         timerun = myapp.time_run()
@@ -518,10 +518,10 @@ def run_rebuild_repos(my_config_file='/etc/rutgers-repotools.cfg'):
     usage += "                 separated by whitespace, or simply: all."
     parser = OptionParser(usage)
     parser.add_option("-v", "--verbose",
-                      default=False, 
-                      action="store_true", 
+                      default=False,
+                      action="store_true",
                       help="Verbose output")
-    
+
     (options, args) = parser.parse_args(sys.argv[1:])
     myapp.create_lock()
 

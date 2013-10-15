@@ -1,4 +1,4 @@
-""" Library that checks dependencies of the new packages against the to_repo 
+""" Library that checks dependencies of the new packages against the to_repo
 and copies the corresponding debuginfo subpackages. """
 ###############################################################################
 #Programmer: Orcan Ogetbil    orcan@nbcs.rutgers.edu                          #
@@ -23,10 +23,10 @@ and copies the corresponding debuginfo subpackages. """
 import datetime
 
 def check_packages(app, kojisession, packages, to_repo):
-    """ Check if the given packages are really there 
+    """ Check if the given packages are really there
     If they are, return the tags associated with them"""
     clean = True
-    
+
     for package in packages:
         if package.count("-") < 2 or package[0] == "-" or package[-1] == "-":
             app.logger.error("Error: Invalid NVR fromat: " + package)
@@ -47,14 +47,14 @@ def check_packages(app, kojisession, packages, to_repo):
                 app.logger.error('Package ' +  str(package) + ' has no valid tags!')
                 app.exit(3)
             if to_repo in pkgtags:
-                app.logger.error("Error: " + package + " is already in the " 
+                app.logger.error("Error: " + package + " is already in the "
                                  + to_repo + " repo.")
                 clean = False
         else:
             app.logger.error("Error: " + package + " not found in koji.")
             clean = False
         pkgstags.append(pkgtags)
-    
+
     if clean == False:
         app.exit(2)
 
@@ -77,7 +77,7 @@ def debug_check(app, packages):
 
 
 def get_replaced_packages(app,kojisession,packages,to_repo):
-    """Find if the package we're pushing replaces any other packages 
+    """Find if the package we're pushing replaces any other packages
     in the repository"""
     replaced_pkgs = []
     # set multicall to false for now so we can get results
@@ -98,10 +98,10 @@ def get_replaced_packages(app,kojisession,packages,to_repo):
     # set multicall back to true
     kojisession.multicall = True
     return replaced_pkgs
-    
+
 
 def push_packages(app, kojisession, packages, to_repo, user,test):
-    """ Tag into the to_repo. Return a message with the results 
+    """ Tag into the to_repo. Return a message with the results
     to be emailed """
     kojitmpsession = app.get_koji_session(ssl = False)
     kojisession.multicall = True
@@ -115,7 +115,7 @@ def push_packages(app, kojisession, packages, to_repo, user,test):
     # untag all the pkgs, they will be replaced
     for pkg in replaced_pkgs:
         kojisession.untagBuildBypass(to_repo, pkg)
-        
+
     for package in packages:
         app.logger.info("Tagging " + package + " into " + to_repo)
         if not test:
@@ -142,7 +142,7 @@ def push_packages(app, kojisession, packages, to_repo, user,test):
     # Get the results
     results = kojisession.multiCall()
     replaced_msg = ""
-        
+
 
     clean = True
     for i in range(len(results)):
@@ -159,7 +159,7 @@ def push_packages(app, kojisession, packages, to_repo, user,test):
     email_subject = distname_nice + " - Push Successful: " + packagelist
     if test:
         test_msg = "TEST: nothing actually applied"
-    else: 
+    else:
         test_msg = ""
     email_body = """
 %s

@@ -50,7 +50,7 @@ def gen_repos(app, repos, builddebug=False):
     repos_tmpdir = tempfile.mkdtemp(prefix=tempprefix)
     repos_dir = app.config.get('repositories', 'repodir_private')
     debugrepo = app.config.get('repositories', 'debugrepo')
-    distver = app.config.get('repositories','distver')
+    distver = app.distver
 
     kojisession = app.get_koji_session(ssl = False)
     if builddebug:
@@ -100,7 +100,7 @@ def gen_repos(app, repos, builddebug=False):
 def create_debug_repo(app, kojisession, repos_tmpdir):
     """ Create debug repo. Uses the old repo metadata, if exists, for speed """
     debugrepo = app.config.get('repositories', 'debugrepo')
-    relver = app.config.get('repositories', 'distver')
+    relver = app.distver
     repos_dir = app.config.get('repositories', 'repodir_private')
     repo_dir = repos_dir + "/" + debugrepo + "/" + relver
     repo_tmpdir = repos_tmpdir + "/debug/" + relver
@@ -173,7 +173,7 @@ def create_debug_repo(app, kojisession, repos_tmpdir):
 def create_repo(app, kojisession, repo, repos_tmpdir):
     """ Create a repo. Uses the old repo metadata, if exists, for speed """
     publishrepos = get_publishrepos(app)
-    relver = app.config.get('repositories', 'distver')
+    relver = app.distver
     repos_dir = app.config.get('repositories', 'repodir_private')
     relname = app.config.get('repositories', 'distname')
     repo_prefix = relname + relver + "-"

@@ -1,4 +1,4 @@
-""" Application handler class that contains common functions to use in our 
+""" Application handler class that contains common functions to use in our
 scripts """
 ###############################################################################
 #Programmer: Orcan Ogetbil    orcan@nbcs.rutgers.edu                          #
@@ -31,12 +31,14 @@ import koji
 import logging
 import rlogger
 
+# TODO fix this apphandler with 'apphandler.config.get('distver'))
 class AppHandler:
     """ Repotool application handler class """
-    def __init__(self, verifyuser = True, config_file='/etc/rutgers-repotools.cfg'):
+    def __init__(self, distver, verifyuser = True, config_file='/etc/rutgers-repotools.cfg'):
         self.config = None
         self.load_config(config_file)
         self.username = getpass.getuser()
+        self.distver = distver  # TODO : do we have a list to check valid distvers?
         self.groupowner = self.config.get("repositories", "groupowner")
         if verifyuser:
             self.verify_user()
@@ -48,7 +50,7 @@ class AppHandler:
             self._lockfilename = self.config.get("locks", self._callername)
         except ConfigParser.NoOptionError:
             self._lockfilename = None
-        #print "We were called from " + self._callername 
+        #print "We were called from " + self._callername
 
         self._start_time = time.time()
         self.logger = None
@@ -79,7 +81,6 @@ class AppHandler:
 
     def verify_user(self):
         """ See if we want to run our application for this user """
-
         if self.username == "root":
             print "Error: Please do not run this script as root."
             sys.exit(1)
@@ -93,7 +94,7 @@ class AppHandler:
         """ Load configuration from file """
         self.config = ConfigParser.ConfigParser()
         self.config.read(config_file)
-        
+
     def time_run(self):
         """ Calculate time run """
         return round(time.time() - self._start_time, 3)
@@ -101,7 +102,7 @@ class AppHandler:
     def check_lock(self):
         """ Stop if there is a lock file for this application """
         if self._lockfilename == None:
-            print "No lockfile specified in the configuration for the application"
+            print "No lockfile specified in the configuration for the application."
             sys.exit(1)
         lockers = self.config.options('locks')
         for locker in lockers:
@@ -110,7 +111,7 @@ class AppHandler:
                 if not AppHandler.is_running(lockfilename):
                     AppHandler.remove_lock(lockfilename)
                 else:
-                    print "Process is currently running. Please wait for it to finish"
+                    print "Process is currently running. Please wait for it to finish."
                     sys.exit(1)
 
     def create_lock(self):
@@ -118,13 +119,13 @@ class AppHandler:
         self.check_lock()
         lockfile = open(self._lockfilename, "w")
         lockfile.write(str(os.getpid()))
-        
+
     @staticmethod
     def remove_lock(lockfilename):
         """ Delete the lock file of this application """
         if os.path.isfile(lockfilename):
             os.remove(lockfilename)
-    
+
     @staticmethod
     def is_running(lockfilename):
         lockfile = open(lockfilename, "r")
@@ -151,7 +152,7 @@ class AppHandler:
             self.logger.info("Group privileges look okay.")
         else:
             self.logger.warning("Current process not in proper group (" + gid + "); chown required")
-        
+
         if os.stat(private_dir)[5] != gid:
             self.logger.info("Chowning " + private_dir + " to group " + self.groupowner)
             # Recursively chown private_dir
@@ -162,7 +163,7 @@ class AppHandler:
                     os.chown(os.path.join(root, path), -1, gid, follow_symlinks=false)
         else:
             self.logger.info("Group id is + " + gid + "; no chowning needed")
-                    
+
 
         # Make sure the log file ends up with the right group owner:
         if self._logfile:

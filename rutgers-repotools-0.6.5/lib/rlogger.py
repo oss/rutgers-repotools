@@ -44,7 +44,7 @@ class LogFile(object):
     def __init__(self, logger, level=logging.DEBUG):
         self.logger = logger
         self.level = level
-        
+
     def write(self, msg):
         """ Write to log """
         if self.level == logging.ERROR:
@@ -53,7 +53,7 @@ class LogFile(object):
             self.logger.debug(msg)
         else:
             self.logger.info(msg)
-        
+
     def flush(self):
         """ Guess what this is doing :) """
         for handler in self.logger.handlers:
@@ -80,7 +80,7 @@ class ColoredFormatter(logging.Formatter):
 def formatter_message(message, use_color = True):
     """ Replace the macros with their values """
     if use_color:
-        message = message.replace("$RESET", RESET_SEQ).replace("$BOLD", 
+        message = message.replace("$RESET", RESET_SEQ).replace("$BOLD",
                                                                BOLD_SEQ)
     else:
         message = message.replace("$RESET", "").replace("$BOLD", "")
@@ -92,8 +92,8 @@ def init(filename, suspect, config, level, quiet):
     my_logger = logging.getLogger(suspect)
     my_logger.propagate = False
     my_logger.setLevel(logging.DEBUG)
-    
-    # We have three handlers. One to stdout, one to the application specific 
+
+    # We have three handlers. One to stdout, one to the application specific
     # log file, one to the generic log file.
 
     plogfile = config.get("logs", "plainlog")
@@ -104,10 +104,10 @@ def init(filename, suspect, config, level, quiet):
     if filename != "":
         formatter = logging.Formatter(
             "%(asctime)s - %(name)-13s - %(levelname)-8s - %(message)s")
-            
+
         rfhandler = logging.handlers.RotatingFileHandler(
-            filename, 
-            maxBytes=int(config.get("logs", "maxBytes")), 
+            filename,
+            maxBytes=int(config.get("logs", "maxBytes")),
             backupCount=int(config.get("logs", "backupCount"))
             )
         my_logger.addHandler(rfhandler)

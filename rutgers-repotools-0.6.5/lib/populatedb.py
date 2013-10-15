@@ -35,10 +35,10 @@ def populate_database(dbase, content):
     myquery += "Arch, URL, SRCRPM, DBGRPM, "
     myquery += "Vendor, BuiltBy, Category, Summary, "
     myquery += "Description, License, Date, Size) VALUES "
-    myquery += "(%s, %s, %s, %s, \"%s\", " % (content['package_id'], 
-                                              content['build_id'], 
-                                              content['rpm_id'], 
-                                              content['srpm_id'], 
+    myquery += "(%s, %s, %s, %s, \"%s\", " % (content['package_id'],
+                                              content['build_id'],
+                                              content['rpm_id'],
+                                              content['srpm_id'],
                                               content['build_name'])
     myquery += "\"%s\", \"%s\", \"%s\", \"%s\", " % (content['nvr'],
                                                      content['Name'],
@@ -66,11 +66,11 @@ def populate_database(dbase, content):
             deptype = "Obsoletes"
         elif dep['type'] == 3:
             deptype = "Conflicts"
-        
-        depquery = """ INSERT INTO %s 
-        (rpm_id, Resource, Flags, Version, build_id) VALUES 
+
+        depquery = """ INSERT INTO %s
+        (rpm_id, Resource, Flags, Version, build_id) VALUES
         ( %s   , \"%s\"  , %s   , \"%s\" , %s)
-        """ % (deptype, content['rpm_id'], dep['name'], dep['flags'], 
+        """ % (deptype, content['rpm_id'], dep['name'], dep['flags'],
                dep['version'], content['build_id'])
         try:
             dbase.query(depquery)
@@ -79,22 +79,22 @@ def populate_database(dbase, content):
 
     for ifile in content['file_info']:
         filename = string.replace(ifile['name'], "\\", "\\\\")
-        filequery = """ INSERT INTO Files 
-        (rpm_id, Path  , Flags, Digest, Size, build_id) VALUES 
+        filequery = """ INSERT INTO Files
+        (rpm_id, Path  , Flags, Digest, Size, build_id) VALUES
         (%s    , \"%s\", %s   , \"%s\", %s  , %s)
-        """ % (content['rpm_id'], filename, ifile['flags'], ifile['digest'], 
+        """ % (content['rpm_id'], filename, ifile['flags'], ifile['digest'],
                ifile['size'], content['build_id'])
-        # Maybe we have to use .encode('utf-8') on filenames. 
+        # Maybe we have to use .encode('utf-8') on filenames.
         # Not necessary for now.
         try: # Normally, this shouldn't fail.
             dbase.query(filequery)
         except _mysql_exceptions.IntegrityError:
             # Here we can get "ProgrammingError"s due to weird file names. To
             # ignore this, we can replace the above line with
-            # except (_mysql_exceptions.IntegrityError, 
+            # except (_mysql_exceptions.IntegrityError,
             #         _mysql_exceptions.ProgrammingError):
             pass
-            
+
     for dist in content['dist_info']:
         distquery = """ INSERT INTO Distribution
         (rpm_id, repo, build_id) VALUES
@@ -105,12 +105,12 @@ def populate_database(dbase, content):
     for entry in content['specchangelog']:
         entry['author'] = string.replace(entry['author'],
                                          '"', '\\\"').encode('utf-8')
-        entry['text'] = string.replace(entry['text'], 
+        entry['text'] = string.replace(entry['text'],
                                        '"', '\\\"').encode('utf-8')
         specclogquery = """ INSERT INTO SpecChangeLogs
         (build_id, Date, Author, Text, rpm_id) VALUES
         (%s      , %s  , "%s"  , "%s", %s)
-        """ % (content['build_id'], entry['date_ts'], entry['author'], 
+        """ % (content['build_id'], entry['date_ts'], entry['author'],
                entry['text'], content['rpm_id'])
         dbase.query(specclogquery)
 
@@ -130,7 +130,7 @@ def populate_database(dbase, content):
         softwareclogquery = """ INSERT INTO SoftwareChangeLogs
         (build_id, Filename, Text) VALUES
         (%s      , "%s"    , "%s")
-        """ % (content['build_id'], content['softwarechangelogfile'], 
+        """ % (content['build_id'], content['softwarechangelogfile'],
                content['softwarechangelog'])
 
         dbase.query(softwareclogquery)
@@ -146,7 +146,7 @@ def remove_old(app, kojisession, dbase):
         build_ids_in_db.append(entry[0])
     latest_builds = []
 
-    relver = app.config.get("repositories", "distver")
+    relver = app.distver
     relname = app.config.get("repositories", "distname")
     repo_prefix = relname + relver + "-"
     repos = app.config.get("repositories", "allrepos").split()
@@ -167,17 +167,17 @@ def remove_old(app, kojisession, dbase):
             res = dbase.store_result()
             rpms2remove = res.fetch_row(maxrows=0)
 
-            for table in ['Packages', 'Distribution', 'Files', 'Requires', 
-                          'Provides', 'Obsoletes', 'Conflicts', 
+            for table in ['Packages', 'Distribution', 'Files', 'Requires',
+                          'Provides', 'Obsoletes', 'Conflicts',
                           'SpecChangeLogs', 'SoftwareChangeLogs']:
                 Packages_query = """ delete from %s where
                 build_id = %s
                 """ % (table, build_id)
                 dbase.query(Packages_query)
             for nvr in rpms2remove:
-                app.logger.info("Package: " + nvr[0] + "." + nvr[1] + 
+                app.logger.info("Package: " + nvr[0] + "." + nvr[1] +
                                 " removed from database.")
-                                                    
+
 
 def fetch_repo(app, kojisession, dbase):
     """ Get latests builds from koji and process their information.
@@ -192,7 +192,7 @@ def fetch_repo(app, kojisession, dbase):
 
     latest_builds = []
 
-    relver = app.config.get("repositories", "distver")
+    relver = app.distver
     relname = app.config.get("repositories", "distname")
     repo_prefix = relname + relver + "-"
     repos = app.config.get("repositories", "allrepos").split()
@@ -209,7 +209,7 @@ def fetch_repo(app, kojisession, dbase):
         dist_info = []
         for tag in tags:
             dist_info.append(tag['name'])
-        
+
         if build_id in build_ids_in_db:
             tagquery  = "SELECT DISTINCT repo FROM Distribution WHERE build_id="
             tagquery += str(build_id)
@@ -223,7 +223,7 @@ def fetch_repo(app, kojisession, dbase):
                 if not tag in tags_in_db:
                     build_rpms = kojisession.listBuildRPMs(build_id)
                     for rpm in build_rpms:
-                        #if (rpm['arch'] != 'src' and 
+                        #if (rpm['arch'] != 'src' and
                         #    not rpm['name'].endswith('-debuginfo')):
                         if not rpm['name'].endswith('-debuginfo'):
                             newtagquery = """ INSERT INTO Distribution
@@ -238,19 +238,19 @@ def fetch_repo(app, kojisession, dbase):
                 if not tag in dist_info:
                     build_rpms = kojisession.listBuildRPMs(build_id)
                     for rpm in build_rpms:
-                        #if (rpm['arch'] != 'src' and 
+                        #if (rpm['arch'] != 'src' and
                         #    not rpm['name'].endswith('-debuginfo')):
                         if not rpm['name'].endswith('-debuginfo'):
                             removetagquery = """ DELETE FROM Distribution WHERE
                             rpm_id = %s AND repo = "%s"
                             """ % (rpm['id'], tag)
-                            app.logger.info("Tag: " + tag + 
-                                            " removed from package: " + 
+                            app.logger.info("Tag: " + tag +
+                                            " removed from package: " +
                                             rpm['nvr'] + "." + rpm['arch'])
                             dbase.query(removetagquery)
         else:
             build_ids_in_db.append(build_id)
-            
+
             build_name = build['name']
             package_id = build['package_id']
             built_by = build['owner_name']
@@ -267,7 +267,7 @@ def fetch_repo(app, kojisession, dbase):
                 elif rpm['name'].endswith('-debuginfo'):
                     build_dbg = rpm['nvr']
             for rpm in build_rpms:
-                #if (rpm['arch'] != 'src' and 
+                #if (rpm['arch'] != 'src' and
                 #    not rpm['name'].endswith('-debuginfo')):
                 if not rpm['name'].endswith('-debuginfo'):
                     rpminfo = {}
@@ -290,10 +290,10 @@ def fetch_repo(app, kojisession, dbase):
                         rpminfo['DBGRPM'] = build_dbg
                     else:
                         rpminfo['DBGRPM'] = None
-                    
-                    headers = ['description', 'summary', 'group', 
+
+                    headers = ['description', 'summary', 'group',
                                'vendor', 'url', 'license']
-                    harray = kojisession.getRPMHeaders(rpmID=rpm['id'], 
+                    harray = kojisession.getRPMHeaders(rpmID=rpm['id'],
                                                        headers=headers)
                     rpminfo['URL'] = harray['url']
                     rpminfo['Vendor'] = harray['vendor']
@@ -380,54 +380,54 @@ def clean_database(app, dbase):
 
 def create_tables(app, dbase):
     """ Create a database with empty tables to be filled """
-    Packages_query = """CREATE TABLE IF NOT EXISTS Packages 
-    (package_id int(11) not null, build_id int(11) not null, rpm_id int(11), 
+    Packages_query = """CREATE TABLE IF NOT EXISTS Packages
+    (package_id int(11) not null, build_id int(11) not null, rpm_id int(11),
     srpm_id int(11),
-    PRIMARY KEY(rpm_id), build_name varchar(50) not null, 
-    nvr varchar(255) not null, Name varchar(50) not null, 
-    Version varchar(50) not null, Rel varchar(50) not null, 
+    PRIMARY KEY(rpm_id), build_name varchar(50) not null,
+    nvr varchar(255) not null, Name varchar(50) not null,
+    Version varchar(50) not null, Rel varchar(50) not null,
     Arch varchar(15) not null, URL varchar(255), SRCRPM varchar(255) not null,
     DBGRPM varchar(255), Vendor varchar(50), BuiltBy varchar(20) not null,
     Category varchar(255) not null, Summary varchar(255), Description text,
     License varchar(255), Date int(11) not null, Size int(11) not null)"""
     dbase.query(Packages_query)
-    Files_query = """CREATE TABLE IF NOT EXISTS Files (rpm_id int(11), 
-    Path varchar(255), PRIMARY KEY(rpm_id, Path), Flags int(31), 
+    Files_query = """CREATE TABLE IF NOT EXISTS Files (rpm_id int(11),
+    Path varchar(255), PRIMARY KEY(rpm_id, Path), Flags int(31),
     Size int(11) not null, Digest varchar(31), build_id int(11) not null)"""
     dbase.query(Files_query)
-    Requires_query = """CREATE TABLE IF NOT EXISTS Requires (rpm_id int(11), 
-    Resource varchar(50), PRIMARY KEY(rpm_id, Resource), Flags int(31), 
+    Requires_query = """CREATE TABLE IF NOT EXISTS Requires (rpm_id int(11),
+    Resource varchar(50), PRIMARY KEY(rpm_id, Resource), Flags int(31),
     Version varchar(20), build_id int(11) not null)"""
     dbase.query(Requires_query)
-    Provides_query = """CREATE TABLE IF NOT EXISTS Provides (rpm_id int(11), 
-    Resource varchar(50), PRIMARY KEY(rpm_id, Resource), Flags int(31), 
+    Provides_query = """CREATE TABLE IF NOT EXISTS Provides (rpm_id int(11),
+    Resource varchar(50), PRIMARY KEY(rpm_id, Resource), Flags int(31),
     Version varchar(20), build_id int(11) not null)"""
     dbase.query(Provides_query)
-    Obsoletes_query = """CREATE TABLE IF NOT EXISTS Obsoletes (rpm_id int(11), 
-    Resource varchar(50), PRIMARY KEY(rpm_id, Resource), Flags int(31), 
+    Obsoletes_query = """CREATE TABLE IF NOT EXISTS Obsoletes (rpm_id int(11),
+    Resource varchar(50), PRIMARY KEY(rpm_id, Resource), Flags int(31),
     Version varchar(20), build_id int(11) not null)"""
     dbase.query(Obsoletes_query)
-    Conflicts_query = """CREATE TABLE IF NOT EXISTS Conflicts (rpm_id int(11), 
-    Resource varchar(50), PRIMARY KEY(rpm_id, Resource), Flags int(31), 
+    Conflicts_query = """CREATE TABLE IF NOT EXISTS Conflicts (rpm_id int(11),
+    Resource varchar(50), PRIMARY KEY(rpm_id, Resource), Flags int(31),
     Version varchar(20), build_id int(11) not null)"""
     dbase.query(Conflicts_query)
-    Distribution_query = """CREATE TABLE IF NOT EXISTS Distribution 
-    (rpm_id int(11), repo varchar(50), PRIMARY KEY(rpm_id, repo), 
+    Distribution_query = """CREATE TABLE IF NOT EXISTS Distribution
+    (rpm_id int(11), repo varchar(50), PRIMARY KEY(rpm_id, repo),
     build_id int(11) not null)"""
     dbase.query(Distribution_query)
-    SpecChangeLogs_query = """CREATE TABLE IF NOT EXISTS SpecChangeLogs 
-    (ID int(15) AUTO_INCREMENT, build_id int(11), Date int(11), 
+    SpecChangeLogs_query = """CREATE TABLE IF NOT EXISTS SpecChangeLogs
+    (ID int(15) AUTO_INCREMENT, build_id int(11), Date int(11),
     Author varchar(255), PRIMARY KEY(ID), Text text, rpm_id int(11))"""
     dbase.query(SpecChangeLogs_query)
     SoftwareChangeLogs_query = """CREATE TABLE IF NOT EXISTS SoftwareChangeLogs
-    (build_id int(11), PRIMARY KEY(build_id), Filename varchar(255), 
+    (build_id int(11), PRIMARY KEY(build_id), Filename varchar(255),
     Text text)"""
     dbase.query(SoftwareChangeLogs_query)
-    SpecChangeLogs_query = """CREATE TABLE IF NOT EXISTS SpecChangeLogs (ID 
+    SpecChangeLogs_query = """CREATE TABLE IF NOT EXISTS SpecChangeLogs (ID
     int(15) AUTO_INCREMENT, build_id int(11), Date int(11),
     Author varchar(255), PRIMARY KEY(ID), Text text, rpm_id int (11));"""
     dbase.query(SpecChangeLogs_query)
-    
+
     app.logger.info("Tables Created (if they didn't exist)")
 
 
@@ -439,11 +439,11 @@ def update_db(app, clean=False, create=False, removeoldpkg=True):
     db_user = app.config.get("rpm2phpdb", "user")
     db_pw   = app.config.get("rpm2phpdb", "password")
     db_name = app.config.get("rpm2phpdb", "name")
-    
+
     dbase = _mysql.connect(db_host, db_user, db_pw, db_name, conv=my_conv)
 
     kojisession = app.get_koji_session(ssl = False)
-    
+
     if clean:
         clean_database(app, dbase)
     if create:
@@ -451,5 +451,5 @@ def update_db(app, clean=False, create=False, removeoldpkg=True):
     if removeoldpkg:
         remove_old(app, kojisession, dbase)
     fetch_repo(app, kojisession, dbase)
-    
+
     dbase.close()

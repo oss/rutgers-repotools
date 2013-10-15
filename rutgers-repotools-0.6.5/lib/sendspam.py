@@ -34,7 +34,7 @@ Subject: %s
 %s
 
 """ % (fromaddr, toaddrs, subject, body)
-    
+
     smtp_host = app.config.get("report", "smtp_host")
     server = smtplib.SMTP(smtp_host)
     server.set_debuglevel(1)

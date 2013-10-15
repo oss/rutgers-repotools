@@ -48,7 +48,7 @@ def generate_config(app, disttype, arch, tmprepodir="", removal=False):
     """ Generates a yum config file for our purposes """
     (fdesc, conffile) = tempfile.mkstemp()
     relname_nice = app.config.get("repositories", "distname_nice")
-    relver = app.config.get("repositories", "distver")
+    relver = app.distver
     repodir_public = app.config.get("repositories", "repodir_public")
     repodir_private = app.config.get("repositories", "repodir_private")
     repos = get_publishrepos(app)
@@ -78,9 +78,9 @@ baseurl=file://%s/%s/updates/%s/
 [extras]
 name=%s - Extras
 baseurl=file://%s/%s/extras/%s/
-""" % (distroverpkg, 
-       relname_nice, repodir_public, relver, arch, 
-       relname_nice, repodir_public, relver, arch, 
+""" % (distroverpkg,
+       relname_nice, repodir_public, relver, arch,
+       relname_nice, repodir_public, relver, arch,
        relname_nice, repodir_public, relver, arch,
        relname_nice, repodir_public, relver, arch)
 
@@ -93,7 +93,7 @@ baseurl=file://%s/%s/extras/%s/
 [%s]
 name=%s %s Tree
 baseurl=file://%s/%s/%s/%s/
-""" % (repo, relname_nice, repo, 
+""" % (repo, relname_nice, repo,
        repodir_private, repo, relver, arch)
             if not removal and repo == disttype:
                 break
@@ -105,7 +105,7 @@ name=New packages
 baseurl=file://%s
 
 """ % (tmprepodir)
-    
+
     app.logger.info("I generated a yum.conf file with the repositories that I")
     app.logger.info("will use to do the dependency checking.")
     app.logger.debug("------------------------yum.conf-----------------------")
@@ -153,7 +153,7 @@ def assign_blame(resolver, dep):
             deplist.append(providing_pkg)
 
     deplist = []
-    
+
     # The dep itself
     deplist.append(dep)
 
@@ -192,7 +192,7 @@ def generate_spam(pkgname, treename):
                 data = data + "\t%s\n" % printable_req(dep[0], dep[1])
 
     data = data + "Please resolve this as soon as possible.\n\n"
-    
+
     return data
 
 
@@ -208,8 +208,8 @@ def filterout(app, baddeps):
             if len(ignoreitem) == 3:
                 ignorelist.append(ignoreitem)
             else:
-                app.logger.warning("Could not parse " + 
-                                  app.config.get("repositories", 
+                app.logger.warning("Could not parse " +
+                                  app.config.get("repositories",
                                              "depcheck_ignorefile") +
                                   ", line " + line + ":")
                 app.logger.warning("\t"+inputtext[line])
@@ -280,10 +280,10 @@ def create_tmp_repo(app, packages, arch, removalfromrepo = ""):
         # We need to hack this through since there is no suitable Python API for
         # the "cp a/* b/" command
         os.rmdir(tempdir)
-        app.logger.info("Populating temporary repo " + tempdir + 
+        app.logger.info("Populating temporary repo " + tempdir +
                         " with candidate packages removed from " + removalfromrepo)
         app.logger.info("Copying the original repo to the temporary location")
-        distver = app.config.get("repositories", "distver")
+        distver = app.distver
         repodir_org = app.config.get("repositories", "repodir_private") + "/" + \
                       removalfromrepo + "/" + distver + "/" + arch
         shutil.copytree(repodir_org, tempdir, symlinks=True)
@@ -299,7 +299,7 @@ def create_tmp_repo(app, packages, arch, removalfromrepo = ""):
 
             next_largest_build_id = -1
             next_largest_build = None
-            tagname = app.config.get("repositories", "distname") + distver + "-" + removalfromrepo 
+            tagname = app.config.get("repositories", "distname") + distver + "-" + removalfromrepo
             allbuilds = kojisession.listTagged(tagname, package=buildinfo["name"])
             for build in allbuilds:
                 if build["build_id"] > next_largest_build_id and build["build_id"] != buildinfo["id"]:
@@ -330,9 +330,9 @@ def create_tmp_repo(app, packages, arch, removalfromrepo = ""):
 
         app.logger.info("Writing metadata")
         createrepo.main(["--update", tempdir])
-        
+
     else:
-        app.logger.info("Populating temporary repo " + tempdir + 
+        app.logger.info("Populating temporary repo " + tempdir +
                         " with candidate packages.")
         for package in packages:
             buildinfo = kojisession.getBuild(package)
@@ -343,13 +343,13 @@ def create_tmp_repo(app, packages, arch, removalfromrepo = ""):
             try:
                 rpmfiles = os.listdir(packagedir+'/'+arch)
                 for rpmfile in rpmfiles:
-                    if (rpmfile.endswith('.rpm') and 
+                    if (rpmfile.endswith('.rpm') and
                         string.find(rpmfile, 'debuginfo')) == -1:
                         app.logger.info("Adding " + rpmfile)
                         os.symlink(packagedir + "/" + arch + "/" + rpmfile,
                                    tempdir + "/" + rpmfile)
             except OSError, ex:
-                app.logger.warning("Source package " + package + 
+                app.logger.warning("Source package " + package +
                                    " does not produce " + arch + " RPM's.")
                 app.logger.debug(str(type(ex))+str(ex))
             # Next copy noarch RPM's
@@ -359,7 +359,7 @@ def create_tmp_repo(app, packages, arch, removalfromrepo = ""):
                     for rpmfile in rpmfiles:
                         if rpmfile.endswith('.rpm'):
                             app.logger.info("Adding " + rpmfile)
-                            os.symlink(packagedir + "/noarch/" + rpmfile, 
+                            os.symlink(packagedir + "/noarch/" + rpmfile,
                                        tempdir + "/" + rpmfile)
                 except IOError, ex:
                     app.logger.debug(str(type(ex))+str(ex))
@@ -369,7 +369,7 @@ def create_tmp_repo(app, packages, arch, removalfromrepo = ""):
 
 def doit(app, repotype, packages = [], removal = False):
     """ Wrapper function for everything """
-    
+
     i_am_broken = False
 
     archs = app.config.get("repositories", "archs").split()
@@ -382,7 +382,7 @@ def doit(app, repotype, packages = [], removal = False):
                 tmprepodir = create_tmp_repo(app, packages, arch)
         else:
             tmprepodir = ""
-        
+
         conffile = generate_config(app, repotype, arch, tmprepodir, removal)
         if not conffile:
             continue
