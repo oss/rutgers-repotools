@@ -28,7 +28,6 @@ from MySQLdb.constants import FIELD_TYPE
 
 def populate_database(dbase, content):
     """ Add new entries to the database with the given content """
-# TODO
     myquery  = " INSERT INTO Packages "
     myquery += "(package_id, build_id, rpm_id, srpm_id, build_name, "
     myquery += "nvr, Name, Version, Rel, "
@@ -126,7 +125,6 @@ def populate_database(dbase, content):
                 'softwarechangelog'].encode('utf-8')
         except UnicodeDecodeError:
             pass
-        # TODO
         softwareclogquery = """ INSERT INTO SoftwareChangeLogs
         (build_id, Filename, Text) VALUES
         (%s      , "%s"    , "%s")
@@ -182,7 +180,6 @@ def remove_old(app, kojisession, dbase):
 def fetch_repo(app, kojisession, dbase):
     """ Get latests builds from koji and process their information.
     Then trigger populate_database(database, information)"""
-    #TODO
     dbase.query("SELECT DISTINCT build_id FROM Packages")
     res = dbase.store_result()
     dat = res.fetch_row(maxrows=0)
@@ -433,7 +430,6 @@ def create_tables(app, dbase):
 
 def update_db(app, clean=False, create=False, removeoldpkg=True):
     """ Wrapper function that governs everything """
-    #TODO
     my_conv = { FIELD_TYPE.LONG: int }
     db_host = app.config.get("rpm2phpdb", "host")
     db_user = app.config.get("rpm2phpdb", "user")

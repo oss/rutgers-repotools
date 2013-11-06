@@ -36,6 +36,8 @@ import rcommon
 
 os.umask(002)
 
+# TODO check the runner scripts to accept a different number of arguments
+
 def add_time_run(body, timerun):
     """ Adds a line to include time run on the email to be sent """
     timerun = str(timerun)
@@ -372,10 +374,10 @@ def run_pushpackage(distversion, my_config_file="/etc/rutgers-repotools.cfg"):
     parser = OptionParser(usage)
     parser.add_option("--nomail",
                       action="store_true",
-                      help="Do not send email notification")
+                      help="Do not send an email notification.")
     parser.add_option("-f", "--force",
                       action="store_true",
-                      help="Do not do dependency checking")
+                      help="Do not do dependency checking.")
     parser.add_option("-t", "--test",
                       default=False,
                       action="store_true",
@@ -383,7 +385,7 @@ def run_pushpackage(distversion, my_config_file="/etc/rutgers-repotools.cfg"):
     parser.add_option("-v", "--verbose",
                       default=False,
                       action="store_true",
-                      help="Verbose output")
+                      help="Verbose output.")
 
     (options, args) = parser.parse_args(sys.argv[1:])
     myapp.create_lock()
@@ -404,8 +406,7 @@ def run_pushpackage(distversion, my_config_file="/etc/rutgers-repotools.cfg"):
         mail = True
 
     if options.test:
-        #mail = False
-        mail = True
+        mail = False
         myapp.logger.warning("This is a test run. No packages will be pushed. No emails will be sent.")
 
     to_repo = args[0]

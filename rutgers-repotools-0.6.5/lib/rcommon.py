@@ -20,18 +20,17 @@ scripts """
 #                                                                             #
 ###############################################################################
 
-import os
-import sys
-import grp
-import getpass
-import inspect
-import time
 import ConfigParser
+import getpass
+import grp
+import inspect
 import koji
 import logging
+import os
 import rlogger
+import sys
+import time
 
-# TODO fix this apphandler with 'apphandler.config.get('distver'))
 class AppHandler:
     """ Repotool application handler class """
     def __init__(self, distver, verifyuser = True, config_file='/etc/rutgers-repotools.cfg'):
@@ -90,6 +89,15 @@ class AppHandler:
             print "Error: The user who runs this script must belong to the group: " + self.groupowner
             sys.exit(1)
 
+    def verify_distver(self):
+        """ Check if the specified distibution version is valid.  """
+        versions = self.config.get("repositories", "alldistvers")
+        distname = self.config.get("repositories", "dist)
+
+        if self.distver not in versions:
+            print "Error: That is not a valid distribution version.\n"
+            sys.exit(1)
+
     def load_config(self, config_file):
         """ Load configuration from file """
         self.config = ConfigParser.ConfigParser()
@@ -119,6 +127,36 @@ class AppHandler:
         self.check_lock()
         lockfile = open(self._lockfilename, "w")
         lockfile.write(str(os.getpid()))
+
+    @staticmethod
+    def parse_distrepo(distrepo):
+        """ Parses a distribution/repository name into its constituent parts.
+
+        Takes a full distribution and repository name like
+        'centos6-rutgers-staging' and splits it up into the appropriate parts.
+        If the name is badly formatted, this method returns None. Otherwise, it
+        returns a tuple containing (distname, distver, repository).
+        
+        For simplicity's sake, this assumes that the distribution version is a
+        simple number after the distrepo name; this can be changed for
+        future versions."""
+        # Future: if this becomes more complicated, feel free to replace the
+        # loop with a proper regular expression.
+        if distrepo is None:
+            return None
+
+        index1 = distrepo.find("-")
+        if index1 == -1:
+            return None
+
+        for i in range(0, index1):
+            if distrepo[i].isdigit():
+                index2 = i
+        else:
+            return None
+
+        return (distrepo[:index2], distrepo[index2:index1],
+                distrepo[index1:])
 
     @staticmethod
     def remove_lock(lockfilename):
