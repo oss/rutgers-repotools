@@ -33,11 +33,11 @@ import time
 
 class AppHandler:
     """ Repotool application handler class """
-    def __init__(self, distver, verifyuser = True, config_file='/etc/rutgers-repotools.cfg'):
+    def __init__(self, distrepo, verifyuser=True, config_file='/etc/rutgers-repotools.cfg'):
         self.config = None
-        self.load_config(config_file)
+        self.load_config(config_file) # TODO
         self.username = getpass.getuser()
-        self.distver = distver  # TODO : do we have a list to check valid distvers?
+        self.distver = distver
         self.groupowner = self.config.get("repositories", "groupowner")
         if verifyuser:
             self.verify_user()
@@ -89,13 +89,14 @@ class AppHandler:
             print "Error: The user who runs this script must belong to the group: " + self.groupowner
             sys.exit(1)
 
-    def verify_distver(self):
-        """ Check if the specified distibution version is valid.  """
+# TODO use this
+    def verify_distribution(self):
+        """ Check if the specified distribution is valid. """
         versions = self.config.get("repositories", "alldistvers")
-        distname = self.config.get("repositories", "dist)
+        distname = self.config.get("repositories", "dist")
 
-        if self.distver not in versions:
-            print "Error: That is not a valid distribution version.\n"
+        if self.distver not in [distname + v for v in versions]:
+            print "Error: That is not a valid distribution.\n"
             sys.exit(1)
 
     def load_config(self, config_file):
@@ -127,36 +128,6 @@ class AppHandler:
         self.check_lock()
         lockfile = open(self._lockfilename, "w")
         lockfile.write(str(os.getpid()))
-
-    @staticmethod
-    def parse_distrepo(distrepo):
-        """ Parses a distribution/repository name into its constituent parts.
-
-        Takes a full distribution and repository name like
-        'centos6-rutgers-staging' and splits it up into the appropriate parts.
-        If the name is badly formatted, this method returns None. Otherwise, it
-        returns a tuple containing (distname, distver, repository).
-        
-        For simplicity's sake, this assumes that the distribution version is a
-        simple number after the distrepo name; this can be changed for
-        future versions."""
-        # Future: if this becomes more complicated, feel free to replace the
-        # loop with a proper regular expression.
-        if distrepo is None:
-            return None
-
-        index1 = distrepo.find("-")
-        if index1 == -1:
-            return None
-
-        for i in range(0, index1):
-            if distrepo[i].isdigit():
-                index2 = i
-        else:
-            return None
-
-        return (distrepo[:index2], distrepo[index2:index1],
-                distrepo[index1:])
 
     @staticmethod
     def remove_lock(lockfilename):

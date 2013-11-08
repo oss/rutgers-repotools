@@ -37,6 +37,39 @@ import rcommon
 os.umask(002)
 
 # TODO check the runner scripts to accept a different number of arguments
+# Repository goes in the wrapper
+# distver goes in the app handler (rcommon)
+
+def parse_distrepo(distrepo):
+    """ Parses a distribution/repository name into its constituent parts.
+
+    Takes a full distribution and repository name like
+    'centos6-rutgers-staging' and splits it up into the appropriate parts.
+    If the name is badly formatted, this method returns None. Otherwise, it
+    returns a tuple containing (distname, distver, repository).
+    
+    For simplicity's sake, this assumes that the distribution version is a
+    simple number after the distrepo name; this can be changed for
+    future versions."""
+    # Future: if this becomes more complicated, feel free to replace the
+    # loop with a proper regular expression.
+    if distrepo is None:
+        return None, None, None
+
+    index1 = distrepo.find("-")
+    if index1 == -1:
+        return None, None, None
+
+    # Find the distribution version
+    for i in range(0, index1):
+        if distrepo[i].isdigit():
+            index2 = i
+            return (distrepo[:index2], distrepo[index2:index1],
+                    distrepo[index1:])
+    else:
+        return None, None, None
+
+
 
 def add_time_run(body, timerun):
     """ Adds a line to include time run on the email to be sent """
@@ -50,6 +83,7 @@ Time run: %s seconds
 
 def run_checkrepo(my_config_file='/etc/rutgers-repotools.cfg'):
     """ Runs the actual script """
+    # TODO
     os.umask(002)
     myapp = rcommon.AppHandler(verifyuser=True,config_file=my_config_file)
     repos = ['upstream']
@@ -287,6 +321,7 @@ def pullpackage(myapp, mail, test, force, from_repo,
 
 def run_movepackage(my_config_file='/etc/rutgers-repotools.cfg'):
     """ Wrapper function around pullpackage and pushpackage."""
+    # TODO
     myapp = rcommon.AppHandler(verifyuser=True,config_file=my_config_file)
     from_repos = myapp.config.get("repositories", "allrepos").split()
     to_repos = get_publishrepos(myapp)
@@ -363,14 +398,20 @@ def run_movepackage(my_config_file='/etc/rutgers-repotools.cfg'):
     myapp.exit(0)
 
 
-def run_pushpackage(distversion, my_config_file="/etc/rutgers-repotools.cfg"):
+def run_pushpackage(my_config_file="/etc/rutgers-repotools.cfg"):
     """ Wrapper function to publish packages. """
+    # TODO
     os.umask(002)
-    myapp = rcommon.AppHandler(verifyuser=True,config_file=my_config_file)
+    myapp = rcommon.AppHandler(distversion, verifyuser=True,config_file=my_config_file)
     to_repos = get_publishrepos(myapp)
-    usage =  "usage: %prog [options] <to_repo> <package(s)>\n\n"
-    usage += "  <to_repo>       one of: " + string.join(to_repos, " ") + "\n"
-    usage += "  <package(s)>    either in NVR format"
+    versions = self.config.get("repositories", "alldistvers")
+    distname = self.config.get("repositories", "dist")
+
+#  TODO Check this
+    usage =  "usage: %prog [options] <distro>-<repo> <package(s)>\n\n"
+    usage += "  <distro>     one of: " + " ".join([distname + v for v in versions])
+    usage += "  <repo>       one of: " + string.join(to_repos, " ") + "\n"
+    usage += "  <package(s)>    A list of packages in NVR format"
     parser = OptionParser(usage)
     parser.add_option("--nomail",
                       action="store_true",
@@ -395,6 +436,7 @@ def run_pushpackage(distversion, my_config_file="/etc/rutgers-repotools.cfg"):
     else:
         verbosity = logging.INFO
     myapp.init_logger(verbosity)
+
     if len(args) < 2:
         myapp.logger.error("Error: Too few arguments: " + str(args))
         myapp.logger.error("Run with --help to see correct usage")
@@ -409,8 +451,12 @@ def run_pushpackage(distversion, my_config_file="/etc/rutgers-repotools.cfg"):
         mail = False
         myapp.logger.warning("This is a test run. No packages will be pushed. No emails will be sent.")
 
-    to_repo = args[0]
+    distro, distver, to_repo = parse_distrepo(args[0])
     packages = args[1:]
+
+    if not distro + distver in [distname + v for v in versions]:
+        myapp.logger.error("Error: Invalid distribution: " + distro + distver)
+        myapp.exit(1)
 
     if not to_repo in to_repos:
         myapp.logger.error( "Error: Invalid to_repo: " + to_repo)
