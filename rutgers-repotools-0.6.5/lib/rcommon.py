@@ -33,11 +33,10 @@ import time
 
 class AppHandler:
     """ Repotool application handler class """
-    def __init__(self, distrepo, verifyuser=True, config_file='/etc/rutgers-repotools.cfg'):
+    def __init__(self, verifyuser=True, config_file='/etc/rutgers-repotools.cfg'):
         self.config = None
-        self.load_config(config_file) # TODO
+        self.load_config(config_file)
         self.username = getpass.getuser()
-        self.distver = distver
         self.groupowner = self.config.get("repositories", "groupowner")
         if verifyuser:
             self.verify_user()
@@ -87,16 +86,6 @@ class AppHandler:
         members = grp.getgrnam(self.groupowner)[3]
         if not self.username in members:
             print "Error: The user who runs this script must belong to the group: " + self.groupowner
-            sys.exit(1)
-
-# TODO use this
-    def verify_distribution(self):
-        """ Check if the specified distribution is valid. """
-        versions = self.config.get("repositories", "alldistvers")
-        distname = self.config.get("repositories", "dist")
-
-        if self.distver not in [distname + v for v in versions]:
-            print "Error: That is not a valid distribution.\n"
             sys.exit(1)
 
     def load_config(self, config_file):

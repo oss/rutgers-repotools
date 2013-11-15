@@ -83,13 +83,20 @@ Time run: %s seconds
 
 def run_checkrepo(my_config_file='/etc/rutgers-repotools.cfg'):
     """ Runs the actual script """
-    # TODO
     os.umask(002)
     myapp = rcommon.AppHandler(verifyuser=True,config_file=my_config_file)
+
+    versions = self.config.get("repositories", "alldistvers")
+    distname = self.config.get("repositories", "dist")
+    valid_distros = [distname + v for v in versions]
     repos = ['upstream']
     repos += get_publishrepos(myapp)
-    usage = "usage: %prog [options] <repo>\n\n"
-    usage += "  <repo>         one of: " + string.join(repos, " ")
+
+    usage = "usage: %prog [options] <distro>-<repo>\n\n"
+    usage += "  <distro>       one of: " + string.join(valid_distros, " ") + "\n"
+    usage += "  <repo>         one of: " + string.join(repos, " ") + "\n"
+    usage += "If you specify the `upstream` repo, don't prefix it with a distro."
+
     parser = OptionParser(usage)
     parser.add_option("--nomail",
                       action="store_true",
@@ -105,6 +112,7 @@ def run_checkrepo(my_config_file='/etc/rutgers-repotools.cfg'):
 
     (options, args) = parser.parse_args(sys.argv[1:])
 
+# TODO we changed the options but we need to change the actual code
     if options.nomail:
         mail = False
     else:
@@ -400,16 +408,16 @@ def run_movepackage(my_config_file='/etc/rutgers-repotools.cfg'):
 
 def run_pushpackage(my_config_file="/etc/rutgers-repotools.cfg"):
     """ Wrapper function to publish packages. """
-    # TODO
     os.umask(002)
     myapp = rcommon.AppHandler(distversion, verifyuser=True,config_file=my_config_file)
-    to_repos = get_publishrepos(myapp)
+
     versions = self.config.get("repositories", "alldistvers")
     distname = self.config.get("repositories", "dist")
+    valid_distros = [distname + v for v in versions]
+    to_repos = get_publishrepos(myapp)
 
-#  TODO Check this
     usage =  "usage: %prog [options] <distro>-<repo> <package(s)>\n\n"
-    usage += "  <distro>     one of: " + " ".join([distname + v for v in versions])
+    usage += "  <distro>     one of: " + string.join(valid_distros, " ") + "\n"
     usage += "  <repo>       one of: " + string.join(to_repos, " ") + "\n"
     usage += "  <package(s)>    A list of packages in NVR format"
     parser = OptionParser(usage)
@@ -454,7 +462,7 @@ def run_pushpackage(my_config_file="/etc/rutgers-repotools.cfg"):
     distro, distver, to_repo = parse_distrepo(args[0])
     packages = args[1:]
 
-    if not distro + distver in [distname + v for v in versions]:
+    if not distro + distver in valid_distros:
         myapp.logger.error("Error: Invalid distribution: " + distro + distver)
         myapp.exit(1)
 
@@ -462,12 +470,11 @@ def run_pushpackage(my_config_file="/etc/rutgers-repotools.cfg"):
         myapp.logger.error( "Error: Invalid to_repo: " + to_repo)
         myapp.exit(1)
 
-    # Print a nice timestamp at the beginning.
     localtime = time.asctime(time.localtime(time.time()))
     myapp.logger.info("Push started on", localtime)
 
     # The real push.
-    pushpackage(myapp, mail, options.test, options.force, to_repo, packages)
+    pushpackage(myapp, mail, options.test, options.force, distver, to_repo, packages)
 
     timerun = myapp.time_run()
     if options.test:
@@ -478,13 +485,11 @@ def run_pushpackage(my_config_file="/etc/rutgers-repotools.cfg"):
     myapp.exit(0)
 
 
-def pushpackage(myapp, mail, test, force, to_repo, packages,
+def pushpackage(myapp, mail, test, force, distver, to_repo, packages,
                 checkdep_to_repo = False):
-
     """ The actual pusher. """
     to_repos = get_publishrepos(myapp)
     user = myapp.username
-    relver = myapp.distver
     distname = myapp.config.get("repositories", "distname")
     kojisession = myapp.get_koji_session(ssl = True)
     pkgstags = push.check_packages(myapp, kojisession, packages, to_repo)
@@ -505,7 +510,6 @@ def pushpackage(myapp, mail, test, force, to_repo, packages,
         if to_repos.index(to_repo) < index:
             checkdep_to_repo = True
 
-
     # Do not do dependency checking when --force flag is given
     if not force:
         if checkdep_to_repo:
@@ -515,15 +519,11 @@ def pushpackage(myapp, mail, test, force, to_repo, packages,
             myapp.logger.info("The specified packages are already inherited from a parent repo.")
             myapp.logger.info("No need to do dependency checking.")
 
-
-
     pushresults = push.push_packages(myapp, kojisession, packages,
-                                     distname + relver + "-" + to_repo,
+                                     distname + distver + "-" + to_repo,
                                      user,test)
 
-
     if not test:
-
         # We are not exposing the build repos anymore. So create our own repo
         myapp.logger.info("Next, regenerate repositories and expose.")
 
@@ -554,6 +554,7 @@ def pushpackage(myapp, mail, test, force, to_repo, packages,
 
 def run_rebuild_repos(my_config_file='/etc/rutgers-repotools.cfg'):
     """ Rebuilds rutgers rpm repos """
+    # TODO why is it deleting things
     os.umask(002)
     myapp = rcommon.AppHandler(verifyuser=True,config_file=my_config_file)
     debugrepo = myapp.config.get("repositories", "debugrepo")
@@ -604,7 +605,6 @@ def run_rebuild_repos(my_config_file='/etc/rutgers-repotools.cfg'):
     myapp.logger.info("\nSuccess! Time run: " + str(timerun) + " s")
 
     myapp.exit()
-
 
 
 def depcheck_results(myapp, user, packages, results, mail):

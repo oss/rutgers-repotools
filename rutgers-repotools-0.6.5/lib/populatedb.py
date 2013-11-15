@@ -136,6 +136,7 @@ def populate_database(dbase, content):
 def remove_old(app, kojisession, dbase):
     """ Delete package entries from database """
     # Queries Koji. All builds in the database that don't exist in Koji get deleted.
+    # TODO change this so it does not delete packages...
     dbase.query("SELECT DISTINCT build_id FROM Packages")
     res = dbase.store_result()
     dat = res.fetch_row(maxrows=0)
@@ -164,6 +165,8 @@ def remove_old(app, kojisession, dbase):
             dbase.query(List_query)
             res = dbase.store_result()
             rpms2remove = res.fetch_row(maxrows=0)
+            # TODO only delete packages from the desired repo (e.g.
+            # centos5-rutgers-staging only deletes CentOs 5 repos)
 
             for table in ['Packages', 'Distribution', 'Files', 'Requires',
                           'Provides', 'Obsoletes', 'Conflicts',
