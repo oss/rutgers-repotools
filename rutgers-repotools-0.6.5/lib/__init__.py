@@ -629,6 +629,7 @@ def depcheck_results(myapp, user, packages, results, mail):
     elif results == "baddep":
         myapp.exit(1)
 
+
 def get_publishrepos(app):
     """ Calculates the list of repos to be published."""
     to_repos = app.config.get("repositories", "allrepos").split()
