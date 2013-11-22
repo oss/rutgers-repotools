@@ -135,7 +135,16 @@ def populate_database(dbase, content):
 
 def remove_old(app, kojisession, dbase):
     """ Delete package entries from database """
-    dbase.query("select distinct build_id from Packages")
+    # NOTE: This will be changed in the new reincarnation of repotools.
+    relver = app.config.get("repositories", "distver")
+    relname = app.config.get("repositories", "distname")
+    if int(relver) == 5:
+        release = "\"ru\""
+    else:
+        release = "\"ru6\""
+
+    # We only want packages for our current distver
+    dbase.query("select distinct build_id from Packages where Rel=" + release)
     res = dbase.store_result()
     dat = res.fetch_row(maxrows=0)
     build_ids_in_db = []
@@ -143,8 +152,6 @@ def remove_old(app, kojisession, dbase):
         build_ids_in_db.append(entry[0])
     latest_builds = []
 
-    relver = app.config.get("repositories", "distver")
-    relname = app.config.get("repositories", "distname")
     repo_prefix = relname + relver + "-"
     repos = app.config.get("repositories", "allrepos").split()
     for i in range(len(repos)):
@@ -421,7 +428,7 @@ def create_tables(app, dbase):
     app.logger.info("Tables Created (if they didn't exist)")
 
 
-def update_db(app, clean=False, create=False, removeoldpkg=True):
+def update_db(app, clean=False, create=False, removeoldpkg=False):
     """ Wrapper function that governs everything """
     my_conv = { FIELD_TYPE.LONG: int }
     db_host = app.config.get("rpm2phpdb", "host")
