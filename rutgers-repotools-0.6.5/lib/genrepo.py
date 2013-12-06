@@ -5,10 +5,6 @@
 #Date: 09/10/2010                                                             #
 #Filename: genrepo.py                                                         #
 #                                                                             #
-#ChangeLog:                                                                   #
-# * 02 Jul 2013 - Kyle Suarez <kds124@nbcs.rutgers.edu>                       #
-# - Added additional log messages during unexpected errors                    #
-#                                                                             #
 #       Copyright 2010 Orcan Ogetbil                                          #
 #                                                                             #
 #    This program is free software; you can redistribute it and/or modify     #

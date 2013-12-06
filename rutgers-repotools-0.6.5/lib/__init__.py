@@ -36,7 +36,6 @@ import rcommon
 
 os.umask(002)
 
-# TODO check the runner scripts to accept a different number of arguments
 # Repository goes in the wrapper
 # distver goes in the app handler (rcommon)
 
@@ -65,7 +64,7 @@ def parse_distrepo(distrepo):
         if distrepo[i].isdigit():
             index2 = i
             return (distrepo[:index2], distrepo[index2:index1],
-                    distrepo[index1:])
+                    distrepo[index1+1:])
     else:
         return None, None, None
 
@@ -88,14 +87,12 @@ def run_checkrepo(my_config_file='/etc/rutgers-repotools.cfg'):
 
     versions = self.config.get("repositories", "alldistvers")
     distname = self.config.get("repositories", "dist")
-    valid_distros = [distname + v for v in versions]
-    repos = ['upstream']
-    repos += get_publishrepos(myapp)
+    repos = get_publishrepos(myapp)
+    repos.append("upstream")
 
     usage = "usage: %prog [options] <distro>-<repo>\n\n"
-    usage += "  <distro>       one of: " + string.join(valid_distros, " ") + "\n"
+    usage += "  <distro>       one of: " + string.join([distname + v for v in versions], " ") + "\n"
     usage += "  <repo>         one of: " + string.join(repos, " ") + "\n"
-    usage += "If you specify the `upstream` repo, don't prefix it with a distro."
 
     parser = OptionParser(usage)
     parser.add_option("--nomail",
@@ -112,7 +109,6 @@ def run_checkrepo(my_config_file='/etc/rutgers-repotools.cfg'):
 
     (options, args) = parser.parse_args(sys.argv[1:])
 
-# TODO we changed the options but we need to change the actual code
     if options.nomail:
         mail = False
     else:
@@ -128,13 +124,22 @@ def run_checkrepo(my_config_file='/etc/rutgers-repotools.cfg'):
         print "I only need 1 <repo> argument"
         myapp.exit(1)
 
-    check_repo = args[0]
-
+    distro, distver, check_repo = parse_distrepo(args[0])
+    if (distro is None or distver is None or to_repo is None):
+        myapp.logger.error("Error: Badly formatted distribution, version or repository.")
+        myapp.exit(1)
+    if distro != distname:
+        myapp.logger.error("Error: '" + distro + "' is not a valid distribution name.")
+        myapp.exit(1)
+    if not distver in versions:
+        myapp.logger.error("Error: '" + distro + distver + "' is not a valid distribution version.")
+        myapp.exit(1)
     if not check_repo in repos:
         print "Error: Invalid from_repo: ", check_repo
         myapp.exit(1)
 
     myapp.init_logger(verbosity, options.quiet)
+    myapp.get_distver = distver
 
     results = checkdep.doit(myapp, check_repo)
     timerun = myapp.time_run()
@@ -179,8 +184,13 @@ def run_populate_rpmfind_db(my_config_file='/etc/rutgers-repotools.cfg'):
 
     myapp.init_logger(verbosity)
 
-    myapp.logger.info("Populating rpmfind database...")
-    populatedb.update_db(myapp, options.rebuild, options.rebuild)
+    # TODO check this. very naive
+    distname = app.config.get("repositories", "distname_nice")
+    alldistvers = app.config.get("repositories", "alldistvers")
+    for distver in alldistvers:
+        myapp.logger.info("Populating rpmfind database for {0} {1}...".format(
+            distname, distver))
+        populatedb.update_db(myapp, options.rebuild, options.rebuild)
 
     timerun = myapp.time_run()
     myapp.logger.info("\nSuccess! Time run: " + str(timerun) + " s")
@@ -192,8 +202,14 @@ def run_pullpackage(my_config_file='/etc/rutgers-repotools.cfg'):
     """ Wrapper function to remove packages from repos. """
     os.umask(002)
     myapp = rcommon.AppHandler(verifyuser=True,config_file=my_config_file)
+
+    # Grab repository information
+    versions = self.config.get("repositories", "alldistvers")
+    distname = self.config.get("repositories", "dist")
     from_repos = myapp.config.get("repositories", "allrepos").split()
-    usage =  "usage: %prog [options] <from_repo> <package(s)>\n\n"
+
+    usage =  "usage: %prog [options] <distro>-<from_repo> <package(s)>\n\n"
+    usage += "  <distro>     one of: " + string.join([distname + v for v in versions], " ") + "\n"
     usage += "  <from_repo>     one of: " + string.join(from_repos, " ") + "\n"
     usage += "  <package(s)>    either in NVR format"
     parser = OptionParser(usage)
@@ -236,20 +252,30 @@ def run_pullpackage(my_config_file='/etc/rutgers-repotools.cfg'):
         mail = False
         myapp.logger.warning("This is a test run. No packages will be pulled. No emails will be sent.")
 
-    from_repo = args[0]
+    # Examine the command line arguments
     packages = args[1:]
+    distro, distver, from_repo = parse_distrepo(args[0])
+    if (distro is None or distver is None or to_repo is None):
+        myapp.logger.error("Error: Badly formatted distribution, version or repository.")
+        myapp.exit(1)
 
+    # Lots of checks
+    if distro != distname:
+        myapp.logger.error("Error: '" + distro + "' is not a valid distribution name.")
+        myapp.exit(1)
+    if not distver in versions:
+        myapp.logger.error("Error: '" + distro + distver + "' is not a valid distribution version.")
+        myapp.exit(1)
     if not from_repo in from_repos:
         myapp.logger.error("Error: Invalid from_repo: " + from_repo)
         myapp.exit(1)
 
-    # Print a nice timestamp at the beginning.
+    myapp.get_distver = distver
+
+    # Run the script and time it
     localtime = time.asctime(time.localtime(time.time()))
     myapp.logger.info("Pull started on", localtime)
-
-    # The real pull.
     pullpackage(myapp, mail, options.test, options.force, from_repo, packages)
-
     timerun = myapp.time_run()
     if options.test:
         myapp.logger.warning("End of test run. " + str(timerun) + " s")
@@ -258,15 +284,12 @@ def run_pullpackage(my_config_file='/etc/rutgers-repotools.cfg'):
 
     myapp.exit(0)
 
-def pullpackage(myapp, mail, test, force, from_repo,
-                packages, checkdep_from_repo = False):
+def pullpackage(myapp, mail, test, force, distname, distver, from_repo,
+                packages, checkdep_from_repo=False):
     """ The actual puller."""
     from_repos = myapp.config.get("repositories", "allrepos").split()
     user = myapp.username
-    relver = myapp.distver
-    distname = myapp.config.get("repositories", "distname")
     kojisession = myapp.get_koji_session(ssl = True)
-
     pkgstags = pull.check_packages(myapp, kojisession, packages, from_repo)
 
     # We only need to depcheck the from_repo if it does not inherit
@@ -293,47 +316,47 @@ def pullpackage(myapp, mail, test, force, from_repo,
             myapp.logger.info("No need to do dependency checking.")
 
     if test:
-        return
+        myapp.logger.info("Test of pullpackage complete.")
+    else:
+        pullresults = pull.pull_packages(myapp, kojisession, packages,
+                                         distname + relver + "-" + from_repo,
+                                         user)
 
-    pullresults = pull.pull_packages(myapp, kojisession, packages,
-                                     distname + relver + "-" + from_repo,
-                                     user)
+        # We are not exposing the build repos anymore. So create our own repo
+        myapp.logger.info("Next, regenerate repositories and expose.")
 
-    # We are not exposing the build repos anymore. So create our own repo
-    myapp.logger.info("Next, regenerate repositories and expose.")
+        dontpublishrepos = myapp.config.get("repositories",
+                                            "dontpublishrepos").split()
+        repostodebug = myapp.config.get("repositories", "repostodebug").split()
 
-    dontpublishrepos = myapp.config.get("repositories",
-                                        "dontpublishrepos").split()
-    repostodebug = myapp.config.get("repositories", "repostodebug").split()
+        dbgcheck = pull.debug_check(myapp, packages)
+        debugrepo_built = False
+        repo_built = False
 
-    dbgcheck = pull.debug_check(myapp, packages)
-    debugrepo_built = False
-    repo_built = False
+        if not from_repo in dontpublishrepos:
+            if from_repo in repostodebug and dbgcheck == True:
+                debugrepo_built = True
+            genrepo.gen_repos(myapp, [from_repo], debugrepo_built)
+            repo_built = True
 
-    if not from_repo in dontpublishrepos:
-        if from_repo in repostodebug and dbgcheck == True:
-            debugrepo_built = True
-        genrepo.gen_repos(myapp, [from_repo], debugrepo_built)
-        repo_built = True
+        if repo_built:
+            populatedb.update_db(myapp, False, False)
 
-    if repo_built:
-        populatedb.update_db(myapp, False, False)
-
-
-    if mail:
-        timerun = myapp.time_run()
-        myapp.logger.info("Finally, sending email.")
-        email_body = add_time_run(pullresults[1], timerun)
-        sendspam.sendspam(myapp, pullresults[0], email_body)
+        if mail:
+            timerun = myapp.time_run()
+            myapp.logger.info("Finally, sending email.")
+            email_body = add_time_run(pullresults[1], timerun)
+            sendspam.sendspam(myapp, pullresults[0], email_body)
 
 
 def run_movepackage(my_config_file='/etc/rutgers-repotools.cfg'):
     """ Wrapper function around pullpackage and pushpackage."""
-    # TODO
     myapp = rcommon.AppHandler(verifyuser=True,config_file=my_config_file)
     from_repos = myapp.config.get("repositories", "allrepos").split()
     to_repos = get_publishrepos(myapp)
-    usage =  "usage: %prog [options] <from_repo> <to_repo> <package(s)>\n\n"
+
+    usage =  "usage: %prog [options] <distro>-<from_repo> <distro>-<to_repo> <package(s)>\n\n"
+    usage += "  <distro>        one of: " + string.join([distname + v for v in versions], " ") + "\n"
     usage += "  <from_repo>     one of: " + string.join(from_repos, " ") + "\n"
     usage += "  <to_repo>       one of: " + string.join(to_repos, " ") + "\n"
     usage += "  <package(s)>    either in NVR format or: all"
@@ -374,12 +397,31 @@ def run_movepackage(my_config_file='/etc/rutgers-repotools.cfg'):
 
     if options.test:
         mail = False
-        myapp.logger.warning("This is a test run. No packages will be pushed. No emails will be sent.")
+        myapp.logger.warning("This is a test run. No packages will be moved. No emails will be sent.")
 
-    from_repo = args[0]
-    to_repo = args[1]
+    # Examine the arguments
     packages = args[2:]
+    from_distro, from_distver, from_repo = parse_distrepo(args[0])
+    to_distro, to_distver, to_repo = parse_distrepo(args[1])
 
+    # Sanity checks
+    # NOTE: This naively assumes that you can't move across distvers or
+    # distros. We leave this here for possible future changes
+    if from_distro is None or from_distver is None or from_repo is None:
+        myapp.logger.error("Error: Badly formatted source distribution, version or repository.")
+        myapp.exit(1)
+    if to_distro is None or to_distver is None or to_repo is None:
+        myapp.logger.error("Error: Badly formatted destination distribution, version or repository.")
+        myapp.exit(1)
+    if from_distro != distname or to_distro != distname:
+        myapp.logger.error("Error: Source and/or destination distributions are not valid.")
+        myapp.exit(1)
+    if not from_distver in versions:
+        myapp.logger.error("Error: '" + from_distro + from_distver + "' is not a valid distribution version.")
+        myapp.exit(1)
+    if not to_distver in versions:
+        myapp.logger.error("Error: '" + to_distro + to_distver + "' is not a valid distribution version.")
+        myapp.exit(1)
     if not from_repo in from_repos:
         myapp.logger.error("Error: Invalid from_repo: " + from_repo)
         myapp.exit(1)
@@ -390,11 +432,13 @@ def run_movepackage(my_config_file='/etc/rutgers-repotools.cfg'):
         myapp.logger.error("Error: from_repo cannot be equal to to_repo")
         myapp.exit(1)
 
-    # Pull/push print their own timestamps; no need for one here.
-    # To execute the move, push then pull.
-    pushpackage(myapp, mail, options.test, options.force, to_repo, packages,
+    myapp.get_distver = from_distver
+    myapp.from_distver = from_distver
+    myapp.to_distver = to_distver
+
+    pushpackage(myapp, mail, options.test, options.force, to_distro, to_distver, to_repo, packages,
                 True)
-    pullpackage(myapp, mail, options.test, options.force, from_repo, packages,
+    pullpackage(myapp, mail, options.test, options.force, from_distro, from_distver, from_repo, packages,
                 True)
 
     timerun = myapp.time_run()
@@ -411,14 +455,15 @@ def run_pushpackage(my_config_file="/etc/rutgers-repotools.cfg"):
     os.umask(002)
     myapp = rcommon.AppHandler(distversion, verifyuser=True,config_file=my_config_file)
 
+    # Grab all the repository information from the config file
     versions = self.config.get("repositories", "alldistvers")
     distname = self.config.get("repositories", "dist")
-    valid_distros = [distname + v for v in versions]
     to_repos = get_publishrepos(myapp)
 
-    usage =  "usage: %prog [options] <distro>-<repo> <package(s)>\n\n"
-    usage += "  <distro>     one of: " + string.join(valid_distros, " ") + "\n"
-    usage += "  <repo>       one of: " + string.join(to_repos, " ") + "\n"
+    # Usage, etc.
+    usage =  "usage: %prog [options] <distro>-<to_repo> <package(s)>\n\n"
+    usage += "  <distro>     one of: " + string.join([distname + v for v in versions], " ") + "\n"
+    usage += "  <to_repo>       one of: " + string.join(to_repos, " ") + "\n"
     usage += "  <package(s)>    A list of packages in NVR format"
     parser = OptionParser(usage)
     parser.add_option("--nomail",
@@ -459,23 +504,30 @@ def run_pushpackage(my_config_file="/etc/rutgers-repotools.cfg"):
         mail = False
         myapp.logger.warning("This is a test run. No packages will be pushed. No emails will be sent.")
 
-    distro, distver, to_repo = parse_distrepo(args[0])
+    # Examine the arguments
     packages = args[1:]
-
-    if not distro + distver in valid_distros:
-        myapp.logger.error("Error: Invalid distribution: " + distro + distver)
+    distro, distver, to_repo = parse_distrepo(args[0])
+    if (distro is None or distver is None or to_repo is None):
+        myapp.logger.error("Error: Badly formatted distribution, version or repository.")
         myapp.exit(1)
 
+    # Sanity checks for the distro name, version, repository, etc.
+    if distro != distname:
+        myapp.logger.error("Error: '" + distro + "' is not a valid distribution name.")
+        myapp.exit(1)
+    if not distver in versions:
+        myapp.logger.error("Error: '" + distro + distver + "' is not a valid distribution version.")
+        myapp.exit(1)
     if not to_repo in to_repos:
         myapp.logger.error( "Error: Invalid to_repo: " + to_repo)
         myapp.exit(1)
 
+    myapp.get_distver = distver
+
+    # Run the script and time it
     localtime = time.asctime(time.localtime(time.time()))
     myapp.logger.info("Push started on", localtime)
-
-    # The real push.
-    pushpackage(myapp, mail, options.test, options.force, distver, to_repo, packages)
-
+    pushpackage(myapp, mail, options.test, options.force, distname, distver, to_repo, packages)
     timerun = myapp.time_run()
     if options.test:
         myapp.logger.warning("End of test run. " + str(timerun) + " s")
@@ -485,12 +537,11 @@ def run_pushpackage(my_config_file="/etc/rutgers-repotools.cfg"):
     myapp.exit(0)
 
 
-def pushpackage(myapp, mail, test, force, distver, to_repo, packages,
-                checkdep_to_repo = False):
+def pushpackage(myapp, mail, test, force, distname, distver, to_repo, packages,
+                checkdep_to_repo=False):
     """ The actual pusher. """
     to_repos = get_publishrepos(myapp)
     user = myapp.username
-    distname = myapp.config.get("repositories", "distname")
     kojisession = myapp.get_koji_session(ssl = True)
     pkgstags = push.check_packages(myapp, kojisession, packages, to_repo)
 
@@ -519,11 +570,13 @@ def pushpackage(myapp, mail, test, force, distver, to_repo, packages,
             myapp.logger.info("The specified packages are already inherited from a parent repo.")
             myapp.logger.info("No need to do dependency checking.")
 
-    pushresults = push.push_packages(myapp, kojisession, packages,
+    if test:
+        myapp.logger.info("Test of pushpackage complete.")
+    else:
+        pushresults = push.push_packages(myapp, kojisession, packages,
                                      distname + distver + "-" + to_repo,
                                      user,test)
 
-    if not test:
         # We are not exposing the build repos anymore. So create our own repo
         myapp.logger.info("Next, regenerate repositories and expose.")
 
@@ -544,26 +597,29 @@ def pushpackage(myapp, mail, test, force, distver, to_repo, packages,
         if repo_built:
             populatedb.update_db(myapp, False, False)
 
-
-    if mail:
-        timerun = myapp.time_run()
-        myapp.logger.info("Finally, sending email.")
-        email_body = add_time_run(pushresults[1], timerun)
-        sendspam.sendspam(myapp, pushresults[0], email_body)
+        if mail:
+            timerun = myapp.time_run()
+            myapp.logger.info("Finally, sending email.")
+            email_body = add_time_run(pushresults[1], timerun)
+            sendspam.sendspam(myapp, pushresults[0], email_body)
 
 
 def run_rebuild_repos(my_config_file='/etc/rutgers-repotools.cfg'):
     """ Rebuilds rutgers rpm repos """
-    # TODO why is it deleting things
     os.umask(002)
     myapp = rcommon.AppHandler(verifyuser=True,config_file=my_config_file)
+
+    versions = self.config.get("repositories")
+    distname = self.config.get("repositories", "dist")
     debugrepo = myapp.config.get("repositories", "debugrepo")
     repos = get_publishrepos(myapp)
     repos.append(debugrepo)
-    usage = "usage: %prog [options] <repo(s)>\n\n"
-    usage += "  <repo(s)>      one or more of: "
-    usage += string.join(repos, " ") + "\n"
-    usage += "                 separated by whitespace, or simply: all."
+
+    usage = "usage: %prog [options] <distro>-<repo> ... \n\n"
+    usage += "  <distro>    one of: " + string.join([distname + v for v in versions], " ") + "\n"
+    usage += "  <repo>      one of: " + string.join(repos, " ") + "\n\n"
+    usage += "You may specify several <distro>-<repo> arguments by separating by whitespace.\n"
+    usage += "Specifying `all` at the moment is not supported."
     parser = OptionParser(usage)
     parser.add_option("-v", "--verbose",
                       default=False,
@@ -581,6 +637,8 @@ def run_rebuild_repos(my_config_file='/etc/rutgers-repotools.cfg'):
     if len(args) < 1:
         print "Error: Too few arguments. We need at least one repo."
         myapp.exit(1)
+
+         # TODO thing see trello
 
     for arg in args:
         if not arg in repos + ["all"]:

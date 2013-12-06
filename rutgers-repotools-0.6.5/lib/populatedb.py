@@ -135,14 +135,15 @@ def populate_database(dbase, content):
 
 def remove_old(app, kojisession, dbase):
     """ Delete package entries from database """
-    # NOTE: This will be changed in the new reincarnation of repotools.
-    # TODO: make this better for the new version
-    relver = app.config.get("repositories", "distver")
+    all_distvers = app.config.get("repositories", "alldistvers")
+    all_releases = app.config.get("repositories", "allreleases")
+    relver = app.distver
     relname = app.config.get("repositories", "distname")
-    if int(relver) == 5:
-        release = "\"ru\""
-    else:
-        release = "\"ru6\""
+
+    # Gets the RPM release based on what distribution version we're using
+    for rel in zip(all_distvers, all_releases):
+        if int(relver) == int(rel(0)):
+            release = rel(1)
 
     # We only want packages for our current distver
     dbase.query("select distinct build_id from Packages where Rel=" + release)

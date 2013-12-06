@@ -38,6 +38,8 @@ class AppHandler:
         self.load_config(config_file)
         self.username = getpass.getuser()
         self.groupowner = self.config.get("repositories", "groupowner")
+        self.distname = self.config.get("repositories", "distname")
+        self.distver = None
         if verifyuser:
             self.verify_user()
 
@@ -87,6 +89,11 @@ class AppHandler:
         if not self.username in members:
             print "Error: The user who runs this script must belong to the group: " + self.groupowner
             sys.exit(1)
+
+    def get_distver(self):
+        if self.distver is None:
+            self.logger.warning("WARNING: distver is None. Bad things will happen")
+        return self.distver
 
     def load_config(self, config_file):
         """ Load configuration from file """
