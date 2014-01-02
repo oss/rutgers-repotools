@@ -141,8 +141,6 @@ def push_packages(app, kojisession, packages, to_repo, user,test):
 
     # Get the results
     results = kojisession.multiCall()
-    replaced_msg = ""
-
 
     clean = True
     for i in range(len(results)):

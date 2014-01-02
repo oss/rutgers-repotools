@@ -85,8 +85,8 @@ def run_checkrepo(my_config_file='/etc/rutgers-repotools.cfg'):
     os.umask(002)
     myapp = rcommon.AppHandler(verifyuser=True,config_file=my_config_file)
 
-    versions = self.config.get("repositories", "alldistvers")
-    distname = self.config.get("repositories", "dist")
+    versions = myapp.config.get("repositories", "alldistvers")
+    distname = myapp.config.get("repositories", "dist")
     repos = get_publishrepos(myapp)
     repos.append("upstream")
 
@@ -125,7 +125,7 @@ def run_checkrepo(my_config_file='/etc/rutgers-repotools.cfg'):
         myapp.exit(1)
 
     distro, distver, check_repo = parse_distrepo(args[0])
-    if (distro is None or distver is None or to_repo is None):
+    if (distro is None or distver is None or check_repo is None):
         myapp.logger.error("Error: Badly formatted distribution, version or repository.")
         myapp.exit(1)
     if distro != distname:
@@ -139,7 +139,7 @@ def run_checkrepo(my_config_file='/etc/rutgers-repotools.cfg'):
         myapp.exit(1)
 
     myapp.init_logger(verbosity, options.quiet)
-    myapp.get_distver = distver
+    myapp.distver = distver
 
     results = checkdep.doit(myapp, check_repo)
     timerun = myapp.time_run()
@@ -185,8 +185,8 @@ def run_populate_rpmfind_db(my_config_file='/etc/rutgers-repotools.cfg'):
     myapp.init_logger(verbosity)
 
     # TODO check this. very naive
-    distname = app.config.get("repositories", "distname_nice")
-    alldistvers = app.config.get("repositories", "alldistvers")
+    distname = myapp.config.get("repositories", "distname_nice")
+    alldistvers = myapp.config.get("repositories", "alldistvers")
     for distver in alldistvers:
         myapp.logger.info("Populating rpmfind database for {0} {1}...".format(
             distname, distver))
@@ -204,8 +204,8 @@ def run_pullpackage(my_config_file='/etc/rutgers-repotools.cfg'):
     myapp = rcommon.AppHandler(verifyuser=True,config_file=my_config_file)
 
     # Grab repository information
-    versions = self.config.get("repositories", "alldistvers")
-    distname = self.config.get("repositories", "dist")
+    versions = myapp.config.get("repositories", "alldistvers")
+    distname = myapp.config.get("repositories", "dist")
     from_repos = myapp.config.get("repositories", "allrepos").split()
 
     usage =  "usage: %prog [options] <distro>-<from_repo> <package(s)>\n\n"
@@ -255,7 +255,7 @@ def run_pullpackage(my_config_file='/etc/rutgers-repotools.cfg'):
     # Examine the command line arguments
     packages = args[1:]
     distro, distver, from_repo = parse_distrepo(args[0])
-    if (distro is None or distver is None or to_repo is None):
+    if (distro is None or distver is None or from_repo is None):
         myapp.logger.error("Error: Badly formatted distribution, version or repository.")
         myapp.exit(1)
 
@@ -270,7 +270,7 @@ def run_pullpackage(my_config_file='/etc/rutgers-repotools.cfg'):
         myapp.logger.error("Error: Invalid from_repo: " + from_repo)
         myapp.exit(1)
 
-    myapp.get_distver = distver
+    myapp.distver = distver
 
     # Run the script and time it
     localtime = time.asctime(time.localtime(time.time()))
@@ -319,7 +319,7 @@ def pullpackage(myapp, mail, test, force, distname, distver, from_repo,
         myapp.logger.info("Test of pullpackage complete.")
     else:
         pullresults = pull.pull_packages(myapp, kojisession, packages,
-                                         distname + relver + "-" + from_repo,
+                                         distname + distver + "-" + from_repo,
                                          user)
 
         # We are not exposing the build repos anymore. So create our own repo
@@ -352,6 +352,10 @@ def pullpackage(myapp, mail, test, force, distname, distver, from_repo,
 def run_movepackage(my_config_file='/etc/rutgers-repotools.cfg'):
     """ Wrapper function around pullpackage and pushpackage."""
     myapp = rcommon.AppHandler(verifyuser=True,config_file=my_config_file)
+
+    # Repository information
+    versions = myapp.config.get("repositories", "alldistvers")
+    distname = myapp.config.get("repositories", "dist")
     from_repos = myapp.config.get("repositories", "allrepos").split()
     to_repos = get_publishrepos(myapp)
 
@@ -432,7 +436,7 @@ def run_movepackage(my_config_file='/etc/rutgers-repotools.cfg'):
         myapp.logger.error("Error: from_repo cannot be equal to to_repo")
         myapp.exit(1)
 
-    myapp.get_distver = from_distver
+    myapp.distver = from_distver
     myapp.from_distver = from_distver
     myapp.to_distver = to_distver
 
@@ -453,11 +457,11 @@ def run_movepackage(my_config_file='/etc/rutgers-repotools.cfg'):
 def run_pushpackage(my_config_file="/etc/rutgers-repotools.cfg"):
     """ Wrapper function to publish packages. """
     os.umask(002)
-    myapp = rcommon.AppHandler(distversion, verifyuser=True,config_file=my_config_file)
+    myapp = rcommon.AppHandler(verifyuser=True,config_file=my_config_file)
 
     # Grab all the repository information from the config file
-    versions = self.config.get("repositories", "alldistvers")
-    distname = self.config.get("repositories", "dist")
+    versions = myapp.config.get("repositories", "alldistvers")
+    distname = myapp.config.get("repositories", "dist")
     to_repos = get_publishrepos(myapp)
 
     # Usage, etc.
@@ -522,7 +526,7 @@ def run_pushpackage(my_config_file="/etc/rutgers-repotools.cfg"):
         myapp.logger.error( "Error: Invalid to_repo: " + to_repo)
         myapp.exit(1)
 
-    myapp.get_distver = distver
+    myapp.distver = distver
 
     # Run the script and time it
     localtime = time.asctime(time.localtime(time.time()))
@@ -609,8 +613,8 @@ def run_rebuild_repos(my_config_file='/etc/rutgers-repotools.cfg'):
     os.umask(002)
     myapp = rcommon.AppHandler(verifyuser=True,config_file=my_config_file)
 
-    versions = self.config.get("repositories")
-    distname = self.config.get("repositories", "dist")
+    versions = myapp.config.get("repositories")
+    distname = myapp.config.get("repositories", "dist")
     debugrepo = myapp.config.get("repositories", "debugrepo")
     repos = get_publishrepos(myapp)
     repos.append(debugrepo)

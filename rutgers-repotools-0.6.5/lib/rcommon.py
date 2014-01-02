@@ -163,9 +163,9 @@ class AppHandler:
             # Recursively chown private_dir
             for root, dirs, files in os.walk(private_dir):
                 for path in dirs:
-                    os.chown(os.path.join(root, path), -1, gid, follow_symlinks=false)
+                    os.chown(os.path.join(root, path), -1, gid, follow_symlinks=False)
                 for path in files:
-                    os.chown(os.path.join(root, path), -1, gid, follow_symlinks=false)
+                    os.chown(os.path.join(root, path), -1, gid, follow_symlinks=False)
         else:
             self.logger.info("Group id is + " + gid + "; no chowning needed")
 

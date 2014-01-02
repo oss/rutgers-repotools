@@ -84,7 +84,6 @@ def gen_repos(app, repos, builddebug=False):
                     app.logger.error("You should check the group permissions for", infopath, "and try pushing again.")
                     raise
                 else:
-                    # Just in case. You never know
                     app.logger.error("Unexpected OS error while replacing old repos.")
                     raise
             shutil.move(repos_tmpdir + "/" + repo + "/" + distver, repos_dir + "/" + repo + "/" + distver)

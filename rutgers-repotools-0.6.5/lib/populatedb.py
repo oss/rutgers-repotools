@@ -113,6 +113,7 @@ def populate_database(dbase, content):
                entry['text'], content['rpm_id'])
         dbase.query(specclogquery)
 
+    # Sanitization
     if content['softwarechangelog']:
         content['softwarechangelog'] = string.replace(
             content['softwarechangelog'], "\\", "\\\\")
@@ -144,9 +145,14 @@ def remove_old(app, kojisession, dbase):
     for rel in zip(all_distvers, all_releases):
         if int(relver) == int(rel(0)):
             release = rel(1)
+            selection_query = "select distinct build_id from Packages where Rel=" + release)
+            break
+    else:
+        app.logger.warning("Release not found while removing old packages. All matching packages from all releases will be removed.")
+        selection_query = "select distinct build_id from Packages"
 
     # We only want packages for our current distver
-    dbase.query("select distinct build_id from Packages where Rel=" + release)
+    dbase.query(selection_query)
     res = dbase.store_result()
     dat = res.fetch_row(maxrows=0)
     build_ids_in_db = []
@@ -156,8 +162,8 @@ def remove_old(app, kojisession, dbase):
 
     repo_prefix = relname + relver + "-"
     repos = app.config.get("repositories", "allrepos").split()
-    for i in range(len(repos)):
-        repos[i] = repo_prefix + repos[i]
+    for i, r in enumerate(repos[:]):
+        repos[i] = repo_prefix + r
 
     for repo in repos:
         latest_builds += kojisession.getLatestBuilds(repo)
@@ -172,8 +178,6 @@ def remove_old(app, kojisession, dbase):
             dbase.query(List_query)
             res = dbase.store_result()
             rpms2remove = res.fetch_row(maxrows=0)
-            # TODO only delete packages from the desired repo (e.g.
-            # centos5-rutgers-staging only deletes CentOs 5 repos)
 
             for table in ['Packages', 'Distribution', 'Files', 'Requires',
                           'Provides', 'Obsoletes', 'Conflicts',
