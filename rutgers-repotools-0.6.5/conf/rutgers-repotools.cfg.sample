@@ -1,0 +1,99 @@
+# Sample configuration file for Rutgers Repository Tools. Make sure to edit the
+# settings before starting.
+
+[koji]
+# These need to point to a directory containing Koji certs
+clientca            = /etc/pki/koji/koji_ca_cert.crt
+clientcert          = /etc/pki/koji/roji.pem
+serverca            = /etc/pki/koji/koji_ca_cert.crt
+
+# The address at which Koji Hub lives
+hub                 = http://localhost/kojihub
+
+# The folder on this machine where packages are generated
+pkgdir              = /usr/koji/package/
+
+# Where packages live on Koji Web
+pkgdir_web          = http://localhost/packages/
+
+# Web interfaces for Koji
+web_iface_private   = https://localhost/koji/
+web_iface_public    = http://localhost/koji/
+
+[locks]
+# Locations and names of lock files. May be freely modified.
+movepackage         = /var/lock/rutgers-repotools/movepackage
+populate-rpmfind-db = /var/lock/rutgers-repotools/populate-rpmfind-db
+pullpackage         = /var/lock/rutgers-repotools/pullpackage
+pushpackage         = /var/lock/rutgers-repotools/pushpackage
+rebuild-repos       = /var/lock/rutgers-repotools/rebuild-repos
+
+[logs]
+# Settings for log files, log locations, and the like.
+backupCount         = 8
+maxBytes            = 1000000
+plainlog            = /tmp/rutgers-repotools-webpush
+checkrepo           = /var/log/rutgers-repotools/checkrepo.log
+movepackage         = /var/log/rutgers-repotools/movepackage.log
+populate-rpmfind-db = /var/log/rutgers-repotools/populate-rpmfind-db.log
+pullpackage         = /var/log/rutgers-repotools/pullpackage.log
+pushpackage         = /var/log/rutgers-repotools/pushpackage.log
+rebuild-repos       = /var/log/rutgers-repotools/rebuild-repos.log
+
+[repositories]
+# allrepos need to be in order: parent child grandchild ...
+# Distribution versions and releases. allreleases need to match alldistvers in order
+alldistvers         = 5 6
+allreleases         = ru ru6
+
+# All of the repositories being managed
+allrepos            = rutgers rutgers-testing rutgers-unstable rutgers-staging
+
+# The architectures packages are built for
+archs               = x86_64 i386
+
+# The repository for debugging information
+debugrepo           = rutgers-debuginfo
+
+# The location of of dependencies to ignore
+depcheck_ignorefile = /etc/depcheck.ignore
+
+# Names of the distribution
+distname            = centos
+distname_nice       = CentOS
+distroverpkg        = centos-release
+
+# Repositories not to publicly publish
+dontpublishrepos    = rutgers-staging
+
+# Users must be in this group to have access
+groupowner          = packagepushers
+
+# Directories for repositories.
+repodir_private     = /usr/koji/private/
+repodir_public      = /usr/koji/public/
+repostodebug        = rutgers rutgers-testing
+
+# The next three are used by rpm2python only
+# allrepos and dontpublishrepos display names, in the same order
+allrepos_display    = Stable Testing Unstable Staging
+dontpublishrepos_display= Staging
+
+# Architecture to list in search results
+arch_display        = x86_64
+
+[rpm2phpdb]
+# Information for rpm2php and rpm2python
+host                = localhost
+name                = rpmdatabase
+user                = roji
+password            = password
+
+[report]
+# Information for building reports
+user                = roji
+from_addr           = roji@koji.rutgers.edu
+to_addr             = youremail@example.com
+smtp_host           = localhost
+
+

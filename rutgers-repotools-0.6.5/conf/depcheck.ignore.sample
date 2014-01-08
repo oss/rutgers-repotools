@@ -1,0 +1,7 @@
+# This file lists the exceptions to dependency breakages that the
+# depcheck script will ignore. Keep it as explicit as possible.
+# Each line must contain exactly 3 elements. Use tabs for consistency.
+# Syntax: (* is wildcard)
+#
+# Name:					Dependency Name:			Dependency Version:
+# rpm-*					rpm					*

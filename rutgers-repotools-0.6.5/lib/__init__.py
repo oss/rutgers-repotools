@@ -613,17 +613,18 @@ def run_rebuild_repos(my_config_file='/etc/rutgers-repotools.cfg'):
     os.umask(002)
     myapp = rcommon.AppHandler(verifyuser=True,config_file=my_config_file)
 
-    versions = myapp.config.get("repositories")
+    versions = myapp.config.get("repositories", "alldistvers")
     distname = myapp.config.get("repositories", "dist")
     debugrepo = myapp.config.get("repositories", "debugrepo")
     repos = get_publishrepos(myapp)
     repos.append(debugrepo)
+    repos.append("all")
+    repos.append("")
 
     usage = "usage: %prog [options] <distro>-<repo> ... \n\n"
     usage += "  <distro>    one of: " + string.join([distname + v for v in versions], " ") + "\n"
     usage += "  <repo>      one of: " + string.join(repos, " ") + "\n\n"
     usage += "You may specify several <distro>-<repo> arguments by separating by whitespace.\n"
-    usage += "Specifying `all` at the moment is not supported."
     parser = OptionParser(usage)
     parser.add_option("-v", "--verbose",
                       default=False,
@@ -633,35 +634,50 @@ def run_rebuild_repos(my_config_file='/etc/rutgers-repotools.cfg'):
     (options, args) = parser.parse_args(sys.argv[1:])
     myapp.create_lock()
 
+    # Set logger verbosity
     if options.verbose:
         verbosity = logging.DEBUG
     else:
         verbosity = logging.INFO
+    myapp.init_logger(verbosity)
 
     if len(args) < 1:
         print "Error: Too few arguments. We need at least one repo."
         myapp.exit(1)
 
-         # TODO thing see trello
+    # TODO testing
+    to_rebuild = dict([(d, []) for v in versions])
 
-    for arg in args:
-        if not arg in repos + ["all"]:
-            print "Error: Invalid repo: " + arg
+    # Do sanity checks on the repos and sort them according to version
+    for dr in [parse_distrepo(x) for x in args]:
+        dname, dist, repo = dr
+        if dname is None or dist is None or repo is None:
+            myapp.logger.error("Error: Badly formatted distribution, version, or repository.")
             myapp.exit(1)
+        elif dname != distname:
+            myapp.logger.error("Error: " + dname + " is not valid.")
+            myapp.exit(1)
+        elif repo not in repos:
+            myapp.logger.error("Error: Invalid repo: " + repo)
+            myapp.exit(1)
+        elif dist not in versions:
+            myapp.logger.error("Error: " + dist + repo + " is not a valid distribution version.")
+            myapp.exit(1)
+        else:
+            to_rebuild[dist].append(repo)
 
-    myapp.init_logger(verbosity)
+    # Finally, do the actual genrepo call
+    for d in versions:
+        if len(to_rebuild[d]) > 0:
+            myapp.distver = d
+            if all in to_rebuild[d]:
 
-    repos.remove(debugrepo)
-    builddebug = False
-    if debugrepo in args:
-        builddebug = True
-        args.remove(debugrepo)
-
-    if "all" in args:
-        genrepo.gen_repos(myapp, repos, True)
-    else:
-        genrepo.gen_repos(myapp, args, builddebug)
-
+            if debugrepo in to_rebuild[d]:
+                to_rebuild[d].remove(debugrepo)
+                builddebug = True
+            else:
+                builddebug = False
+            genrepo.gen_repos(myapp, to_rebuild[d], True)
 
     timerun = myapp.time_run()
     myapp.logger.info("\nSuccess! Time run: " + str(timerun) + " s")
@@ -671,7 +687,7 @@ def run_rebuild_repos(my_config_file='/etc/rutgers-repotools.cfg'):
 
 def depcheck_results(myapp, user, packages, results, mail):
     """ Emails the results of the dependency check if something is broken. """
-    distver= myapp.config.get("repositories", "distver")
+    distver = myapp.distver
     if not results in ["", "baddep"]:
         guilt = "The push attempt of " + user
         guilt += " with the following package(s) failed on " + myapp.config.get("repositories","distname_nice") + distver + ":\n"

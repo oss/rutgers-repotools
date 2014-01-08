@@ -58,10 +58,10 @@ def gen_repos(app, repos, builddebug=False):
             shutil.rmtree(debugpath)
         except OSError, exc:
             if exc.errno == errno.ENOENT:
-                app.logger.warning("No such file or directory:", debugpath)
+                app.logger.warning("No such file or directory: " + debugpath)
                 pass
             else:
-                app.logger.error("Unexpected OS error. See stack trace for details.")
+                app.logger.error("Unexpected OS error: " + os.strerror(exc.errno))
                 raise
         shutil.move(repos_tmpdir + "/debug/" + distver, repos_dir + "/" + debugrepo + "/" + distver)
 
@@ -76,15 +76,15 @@ def gen_repos(app, repos, builddebug=False):
                 shutil.rmtree(infopath)
             except OSError, exc:
                 if exc.errno == errno.ENOENT:
-                    app.logger.warning("No such file or directory:", infopath)
+                    app.logger.warning("No such file or directory: " + infopath)
                     pass
                 elif exc.errno == errno.EACCES:
-                    app.logger.error("Access permission denied to", infopath)
-                    app.logger.error("Fatal error. Stopping now; exception being raised. See stack trace.")
-                    app.logger.error("You should check the group permissions for", infopath, "and try pushing again.")
+                    app.logger.error("Access permission denied to " + infopath)
+                    app.logger.error("Fatal error. See stack trace for more details.")
+                    app.logger.error("You should check the group permissions for " +  infopath + "and try pushing again.")
                     raise
                 else:
-                    app.logger.error("Unexpected OS error while replacing old repos.")
+                    app.logger.error("Unexpected OS error: " + os.strerror(exc.errno))
                     raise
             shutil.move(repos_tmpdir + "/" + repo + "/" + distver, repos_dir + "/" + repo + "/" + distver)
 
@@ -154,7 +154,7 @@ def create_debug_repo(app, kojisession, repos_tmpdir):
             if exc.errno == errno.EEXIST:
                 pass
             else:
-                app.logger.error("Unexpected OS error while making the debug repos.")
+                app.logger.error("Unexpected OS error: " + os.strerror(exc.errno))
                 raise
 
     for archdir in archs:
