@@ -2,11 +2,11 @@
 
 Summary:   Dependency check and publish scripts
 Name:      rutgers-repotools
-Version:   0.6.5
-Release:   5.ru6
+Version:   0.7.0
+Release:   1%{?dist}
 License:   GPLv2+
 Group:     System Environment/Base
-URL:       http://cvs.rutgers.edu/cgi-bin/viewvc.cgi/trunk/orcan/rutgers-repotools/
+URL:       https://github.com/oss/rutgers-repotools
 Source0:   %{name}-%{version}.tar.gz
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root
 BuildArch: noarch
@@ -20,13 +20,12 @@ Requires: python
 BuildRequires: python
 
 %description
-This package contains the tools we use to check the dependencies of
-new packages. This also installs a daily cron job which checks
-the dependency situation in the rutgers tree and sends an email
-if there is anything broken.
+This package contains Rutgers tools needed to check the dependencies of new
+packages. This also installs a daily cron job which checks for broken
+dependencies in the Rutgers tree and sends email to report problems.
 
-Moreover, it includes the scripts to recreate the repositories from
-scratch and to populate the rpmfind database for use of rpm2php.
+This also includes scripts for recreating repositories from scratch and for
+populating the MySQL database used by rpm2python.
 
 %prep
 %setup -q
@@ -43,88 +42,62 @@ chmod -w $RPM_BUILD_ROOT/%{_bindir}/movepackage
 chmod -w $RPM_BUILD_ROOT/%{_bindir}/pullpackage
 chmod -w $RPM_BUILD_ROOT/%{_bindir}/pushpackage
 chmod -w $RPM_BUILD_ROOT/%{_bindir}/populate-rpmfind-db
-chmod -w $RPM_BUILD_ROOT/%{_bindir}/movepackage6
-chmod -w $RPM_BUILD_ROOT/%{_bindir}/pullpackage6
-chmod -w $RPM_BUILD_ROOT/%{_bindir}/pushpackage6
-chmod -w $RPM_BUILD_ROOT/%{_bindir}/populate-rpmfind-db6
 mkdir -p $RPM_BUILD_ROOT/var/lock/rutgers-repotools
 
 %clean
 rm -rf $RPM_BUILD_ROOT
 
 %post
-echo You need to create the SSL certificates for the koji user \"roji\" who will do
-echo the dependency checks for us, in case it was not already created. The certificates
-echo cannot be included in the RPM file for security reasons:
-echo
-echo    user=roji
-echo    koji add-user ${user}
-echo    koji grant-permission admin ${user}
-echo    sudo -s
-echo    cd /etc/pki/koji
-echo    openssl genrsa -out certs/${user}.key 2048
-echo    openssl req -config ssl.cnf -new -nodes -out certs/${user}.csr -key certs/${user}.key
-echo    openssl ca -config ssl.cnf -keyfile private/koji_ca_cert.key -cert koji_ca_cert.crt -out certs/${user}.crt -outdir certs -infiles certs/${user}.csr
-echo    cat certs/${user}.crt certs/${user}.key > ${user}.pem
-echo
-echo Also, a MySQL database needs to be created with write permisson, to be used by rpm2php:
-echo
-echo    mysql -u root -p
-echo
-echo Inside mysql prompt we do:
-echo
-echo    create database rpmfind;
-echo    grant usage on *.* to roji@localhost identified by 'PASSWORD';
-echo    grant all privileges on rpmfind.* to roji@localhost;
-echo    exit;
-echo
-echo Symlinks to movepackage, pullpackage, pushpackage and populate-rpmfind-database
-echo need to be created in webtools webbin directory to make runas work, for
-echo managing packages through rpm2php. The symlinks must have the same owner with
-echo the actual scripts.
-echo
-echo The configuration file /etc/rutgers-repotools.cfg will need to be put on NFS
-echo and symlinked to /etc, so that other machines can also use the same .cfg file
-echo
-echo More information can be found in the README file.
+cat << EOF
+You need to create the SSL certificates for the koji user "roji" who will do
+the dependency checks for us, in case it was not already created. Refer to
+"Adding a User to Koji" for detailed information about the certificate
+generation process.
+
+Also, a MySQL database needs to be created with write permisson, to be used by
+rpm2python. See the Rutgers Repository Tools wiki page for detailed information
+on making the database from scratch.
+
+Symlinks to movepackage, pullpackage, pushpackage and populate-rpmfind-database
+need to be created in webtools webbin directory to make runas work, for
+managing packages through rpm2php. The symlinks must have the same owner with
+the actual scripts.
+
+The configuration file /etc/rutgers-repotools.cfg will need to be put on NFS
+and symlinked to /etc, so that other machines can also use the same .cfg file
+
+More information can be found in the README file and in the OSS wiki.
+EOF
 
 %files
 %defattr(-,root,root,-)
 %doc AUTHORS ChangeLog COPYING README
 %{_bindir}/automagiccheck.py
 %{_bindir}/checkrepo
-%{_bindir}/checkrepo6
 %{_bindir}/movepackage
 %{_bindir}/pullpackage
 %{_bindir}/pushpackage
 %{_bindir}/kojibackup.sh
 %{_bindir}/rebuild-repos
 %{_bindir}/populate-rpmfind-db
-%{_bindir}/movepackage6
-%{_bindir}/pullpackage6
-%{_bindir}/pushpackage6
-%{_bindir}/rebuild-repos6
-%{_bindir}/populate-rpmfind-db6
 %{python_sitelib}/RUtools/
 %{python_sitelib}/rutgers_repotools-%{version}-py2.6.egg-info
+# TODO check this
 %config %{_sysconfdir}/cron.daily/daily_checks
 %config %{_sysconfdir}/cron.daily/depcheck_rutgers
-%config %{_sysconfdir}/cron.daily/depcheck_rutgers6
 %config %{_sysconfdir}/cron.daily/backup_rpmfind.sh
 %config(noreplace) %{_sysconfdir}/depcheck.ignore
-%config(noreplace) %{_sysconfdir}/depcheck6.ignore
 %config(noreplace) %{_sysconfdir}/rutgers-repotools.cfg
-%config(noreplace) %{_sysconfdir}/rutgers-repotools-centos6.cfg
 
-# The log directory should be setgid with packagepushers, so the logs
-# are readable/writeable by anyone in packagepushers
+# The log directory and lock files should be owned by the group packagepushers
 %attr(4775, root, packagepushers) %dir /var/log/%{name}/
-
-# lock directory should be owned by packagepushers, and setgid packagepushers
 %attr(4775, root, packagepushers) %dir /var/lock/rutgers-repotools
 
 
 %changelog
+* Thu Jan 16 2014 Kyle Suarez <kds124@nbcs.rutgers.edu> 0.7.0-1
+- Complete rehaul for version 0.7.0
+
 * Wed May 01 2013 Matt Robinson <mwr54@nbcs.rutgers.edu> 0.6.5-5
 - Fixed an issue with lockfile checking and removed a redundant block of code
 

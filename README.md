@@ -12,36 +12,35 @@ An imaginary koji user named 'roji' does the tagging and untagging of packages
 on koji, and the emailing of the results. In order to access the koji database
 and to do (un)tagging operations roji needs SSL certificates. These can be
 generated via
-```
-     #!/bin/bash
-     user=roji
-     koji add-user ${user}
-     koji grant-permission admin ${user}
-     sudo -s
-     cd /etc/pki/koji
-     openssl genrsa -out certs/${user}.key 2048
-     openssl req -config ssl.cnf -new -nodes -out certs/${user}.csr -key certs/${user}.key
-     openssl ca -config ssl.cnf -keyfile private/koji_ca_cert.key -cert koji_ca_cert.crt \
-        -out certs/${user}.crt -outdir certs -infiles certs/${user}.csr
-     cat certs/${user}.crt certs/${user}.key > ${user}.pem
-```
+
+    $ user=roji
+    $ koji add-user ${user}
+    $ koji grant-permission admin ${user}
+    $ sudo -s
+    $ cd /etc/pki/koji
+    $ openssl genrsa -out certs/${user}.key 2048
+    $ openssl req -config ssl.cnf -new -nodes -out certs/${user}.csr -key certs/${user}.key
+    $ openssl ca -config ssl.cnf -keyfile private/koji_ca_cert.key -cert koji_ca_cert.crt \
+    $    -out certs/${user}.crt -outdir certs -infiles certs/${user}.csr
+    $ cat certs/${user}.crt certs/${user}.key > ${user}.pem
+
 An external MySQL database needs to be created with write access to dump the package
-information, which will be used by rpm2php. We typically use, as root
-```
-     mysql -u root -p
-```
+information, which will be used by rpm2python. We typically use, as root
+
+     # mysql -u root -p
+
 Inside mysql prompt we do:
-```
-     create database rpmfind;
-     grant usage on *.* to roji@localhost identified by 'PASSWORD';
-     grant all privileges on rpmfind.* to roji@localhost;
-     exit;
-```
+
+     > create database rpmfind;
+     > grant usage on *.* to roji@localhost identified by 'PASSWORD';
+     > grant all privileges on rpmfind.* to roji@localhost;
+     > exit;
+
 Then the database can be accessed via
-```
-     mysql -uroji rpmfind -p
-```
-If the database is to be accessed by a remote machine (e.g. that runs rpm2php),
+
+     $ mysql -uroji rpmfind -p
+
+If the database is to be accessed by a remote machine (e.g. that runs rpm2python),
 the necessary privileges need to be provided. As of this writing, this suite of
 tools lives on omachi.
 
@@ -63,7 +62,7 @@ It is possible to give a list of exceptions for broken dependencies to this
 script that will be ignored. This ignore list is given in file
 `/etc/depcheck.ignore`. However, it is best to avoid using exceptions and fix
 the broken dependencies properly. The script has the following usage:
-```
+
      usage: checkrepo [options] <repo>
 
      options:
@@ -71,19 +70,19 @@ the broken dependencies properly. The script has the following usage:
        --nomail       Do not send email notification
        -v, --verbose  Verbose output
        -q, --quiet    Don't output anything
-```
+
 
 ### populate-rpmfind-db
 Updates or rebuilds from scratch the rpmfind repository, that will be accessed by
-rpm2php. Rebuilding from scratch assumes the existence of a running koji server.
-```
+rpm2python. Rebuilding from scratch assumes the existence of a running koji server.
+
      usage: populate-rpmfind-db [options]
 
      options:
        -h, --help     show this help message and exit
        -v, --verbose  Verbose output
        -r, --rebuild  Cleans and rebuilds the whole database.
-```
+
 
 ### pushpackage
 This main push script that does all the magic. This script takes package(s) from
@@ -94,7 +93,7 @@ the target repo and rebuilds the target repo. Moreover it takes the debuginfo
 subpackages of the packages (if there are any) and forwards them to the 
 rutgers-debuginfo repo. Finally, by default, it sends the results to OSS as an 
 email. It has the following usage:
-```
+
      usage: pushpackage [options] <to_repo> <package(s)>
 
        <to_repo>       one of: rutgers rutgers-testing rutgers-unstable
@@ -107,18 +106,18 @@ email. It has the following usage:
        -t, --test      Do the dependency checking and exit. No actual pushes are
        	   	       made.
        -v, --verbose   Verbose output
-```
+
 
 Example:
-```
+
      $ pushpackage rutgers-testing rutgers-repotools-0.2.0-1.ru
-```
+
 
 
 ### pullpackage
 This is the brother of pushpackage. It is used to remove packages from the
 specified repos.
-```
+
      usage: pullpackage [options] <from_repo> <package(s)>
 
        <from_repo>     one of: rutgers rutgers-testing rutgers-unstable rutgers-staging
@@ -131,12 +130,12 @@ specified repos.
        -t, --test     Do the dependency checking and exit. No actual pulls are
 		      made.
        -v, --verbose  Verbose output
-```
+
 
 ### movepackage
 Wrapper around pullpackage and pushpackage. It just pushes the repo to
 `to_repo` and pulls it from `from_repo`.
-```
+
      usage: movepackage [options] <from_repo> <to_repo> <package(s)>
 
        <from_repo>     one of: rutgers rutgers-testing rutgers-unstable rutgers-staging
@@ -150,7 +149,7 @@ Wrapper around pullpackage and pushpackage. It just pushes the repo to
        -t, --test     Do the dependency checking and exit. No actual pushes are
 		      made.
        -v, --verbose  Verbose output
-```
+
 
 ### rebuild-repos
 This has the capability of recreating all the repos we publish from scratch.
@@ -160,7 +159,7 @@ Then it creates symlinks from koji's packages directories into a temporary
 repo directory. When all packages are symlinked, the repo metadata is created in
 this temporary directory. Finally the old repo in `/army/rpmprivate/centos` is
 replaced by the new one.
-```
+
      usage: rebuild-repos [options] <repo(s)>
 
        <repo(s)>      one or more of: rutgers rutgers-testing rutgers-unstable rutgers-debuginfo
@@ -169,7 +168,7 @@ replaced by the new one.
      options:
        -h, --help     show this help message and exit
        -v, --verbose  Verbose output
-```
+
 
 Changes
 =======
@@ -184,12 +183,12 @@ src/checkdep.py is heavily modified version of Fedora's spam-o-matic from mash
 project:
 http://git.fedoraproject.org/git/mash
 
-The rest is written by Orcan Ogetbil, Jarek Sedlacek, and Kaitlin Poskaitis of Rutgers'
-Open System Solutions.
+The rest is written by Orcan Ogetbil, Jarek Sedlacek, Kaitlin Poskaitis, and
+Kyle Suarez of Rutgers' Open System Solutions.
 
 For a list of recent changes, see the CHANGELOG.
 
 License
 =======
-This software is licensed under the GNU General public license. See LICENSE
+This software is licensed under the GNU General Public License. See LICENSE
 for more info.
