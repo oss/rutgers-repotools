@@ -618,7 +618,6 @@ def run_rebuild_repos(my_config_file='/etc/rutgers-repotools.cfg'):
     debugrepo = myapp.config.get("repositories", "debugrepo")
     repos = get_publishrepos(myapp)
     repos.append(debugrepo)
-    repos.append("all")
     repos.append("")
 
     usage = "usage: %prog [options] <distro>-<repo> ... \n\n"
@@ -645,8 +644,7 @@ def run_rebuild_repos(my_config_file='/etc/rutgers-repotools.cfg'):
         print "Error: Too few arguments. We need at least one repo."
         myapp.exit(1)
 
-    # TODO testing
-    to_rebuild = dict([(d, []) for v in versions])
+    to_rebuild = dict([(v, []) for v in versions])
 
     # Do sanity checks on the repos and sort them according to version
     for dr in [parse_distrepo(x) for x in args]:
@@ -657,31 +655,34 @@ def run_rebuild_repos(my_config_file='/etc/rutgers-repotools.cfg'):
         elif dname != distname:
             myapp.logger.error("Error: " + dname + " is not valid.")
             myapp.exit(1)
-        elif repo not in repos:
+        elif repo not in repos and repo != "all":
             myapp.logger.error("Error: Invalid repo: " + repo)
             myapp.exit(1)
         elif dist not in versions:
-            myapp.logger.error("Error: " + dist + repo + " is not a valid distribution version.")
+            myapp.logger.error("Error: centos" + repo + " is not a valid distribution version.")
             myapp.exit(1)
         else:
             to_rebuild[dist].append(repo)
 
     # Finally, do the actual genrepo call
-    for d in versions:
-        if len(to_rebuild[d]) > 0:
-            myapp.distver = d
-            if all in to_rebuild[d]:
-
-            if debugrepo in to_rebuild[d]:
-                to_rebuild[d].remove(debugrepo)
-                builddebug = True
-            else:
-                builddebug = False
-            genrepo.gen_repos(myapp, to_rebuild[d], True)
+    for dist, buildrepos in to_rebuild.iteritems():
+        myapp.distver = dist
+        if len(buildrepos) <= 0:
+            continue
+        elif "all" in buildrepos:
+            builddebug = True
+            buildrepos = repos[:]
+            buildrepos.remove(debugrepo)
+            buildrepos.remove("")
+        elif debugrepo in buildrepos:
+            builddebug = True
+            buildrepos.remove(debugrepo)
+        else:
+            builddebug = False
+        genrepo.gen_repos(myapp, buildrepos, builddebug)
 
     timerun = myapp.time_run()
     myapp.logger.info("\nSuccess! Time run: " + str(timerun) + " s")
-
     myapp.exit()
 
 
