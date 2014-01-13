@@ -1,6 +1,6 @@
 %{!?python_sitelib: %global python_sitelib %(%{__python} -c "from distutils.sysconfig import get_python_lib; print(get_python_lib())")}
 
-Summary:   Dependency check and publish scripts
+Summary:   Dependency checking and publish scripts
 Name:      rutgers-repotools
 Version:   0.7.0
 Release:   1%{?dist}
@@ -15,8 +15,8 @@ Requires:  centos-release
 Requires:  createrepo
 Requires:  koji
 Requires:  yum-utils
-Requires:  MySQL-python
-Requires: python
+Requires:  mysql-python
+Requires:  python
 BuildRequires: python
 
 %description

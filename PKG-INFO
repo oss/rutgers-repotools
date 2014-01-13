@@ -1,13 +1,17 @@
 Metadata-Version: 1.0
 Name: rutgers-repotools
-Version: 0.6.5
-Summary: Dependency check and publish scripts
-Home-page: http://cvs.rutgers.edu/cgi-bin/viewvc.cgi/trunk/orcan/rutgers-repotools/
+Version: 0.7.0
+Summary: Dependency checking and publish scripts
+Home-page: https://github.com/oss/rutgers-repotools
 Author: Orcan Ogetbil
-Author-email: orcan@oss.rutgers.edu
+Author-email: oss@oss.rutgers.edu
 License: GPLv2+
-Description: This package contains the tools we use to check the dependencies of
-                                     new packages. This also installs a daily cron job which checks
-                                     the dependency situation in the rutgers tree and sends an email
-                                     if there is anything broken.
+Description: This package contains Rutgers tools needed to check the
+    dependencies of new packages. It also installs a daily cron job which checks
+    for broken dependencies in the Rutgers tree and sends email to report
+    problems.
+
+    This also includes scripts for recreating repositories from scratch and for
+    populating the MySQL database used by rpm2python.
+
 Platform: linux

@@ -2,5 +2,12 @@
 *.swp
 *.tmp
 
-# For ourselves
-TODO.md
+# Ignore our configuration files, offering up samples instead
+conf/depcheck.ignore
+conf/rutgers-repotools.cfg
+
+# Jobs
+cron/backup_rpmfind
+cron/daily_checks
+cron/depcheck_rutgers
+cron/repocheck_rutgers

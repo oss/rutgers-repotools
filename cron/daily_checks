@@ -1,4 +1,0 @@
-#!/bin/sh
-su oss -c "/usr/bin/automagiccheck.py > /dev/null 2>&1"
-su oss -c "/usr/bin/automagiccheck.py --version=6 > /dev/null 2>&1"
-su oss -c "/usr/bin/kojibackup.sh > /dev/null 2>&1"

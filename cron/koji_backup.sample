@@ -1,0 +1,11 @@
+#!/bin/bash
+
+# Dump Koji DB to local disk
+sudo -u koji pg_dump -C koji > /tmp/koji_dbdump.sql
+
+# rsync to rpmprivate so that backups are made
+rsync --archive --sparse --delete TODO
+rsync --archive /tmp/koji_dbdump.sql TODO
+
+# Clean up
+rm -f /tmp/koji_dbdump

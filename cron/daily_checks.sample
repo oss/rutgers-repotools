@@ -1,0 +1,17 @@
+#!/bin/sh
+# daily_checks: A simple script to check the integrity of repository data. Best
+# used in a cron job.
+# 
+# Dependencies:
+# automagiccheck.py: Another script for checking repository directory structure
+# kojibackup.sh: Backs up the Koji RPM database
+
+SCRIPTUSER=roji
+
+if which automagiccheck > /dev/null 2>&1 ; then
+    su $SCRIPTUSER -c "automagiccheck > /dev/null 2>&1"
+fi
+
+if which koji_backup > /dev/null 2<&1 ; then
+    su $SCRIPTUSER -c "/usr/bin/kojibackup.sh > /dev/null 2>&1"
+fi
