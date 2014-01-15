@@ -1,8 +1,0 @@
-#!/bin/sh
-# depcheck_rutgers: Does dependency checking on repositories.
-
-# Who should run this script? They need appropriate privileges.
-SCRIPTUSER = roji
-
-su $SCRIPTUSER -c "/usr/bin/checkrepo -q rutgers"
-su $SCRIPTUSER -c "/usr/bin/checkrepo -q rutgers-testing"

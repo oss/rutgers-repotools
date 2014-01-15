@@ -12,39 +12,31 @@ for arg in range(len(args)):
 
 if "install" in args:
     dir_util.mkpath(buildroot + '/var/log/rutgers-repotools')
-    #file_util.write_file(buildroot + '/var/log/rutgers-repotools/checkrepo.log', "")
-    #file_util.write_file(buildroot + '/var/log/rutgers-repotools/populate-rpmfind-db.log', "")
-    #file_util.write_file(buildroot + '/var/log/rutgers-repotools/pushpackage.log', "")
-    #file_util.write_file(buildroot + '/var/log/rutgers-repotools/rebuild-repos.log', "")
 
 setup(name         = 'rutgers-repotools',
-      version      = '0.6.5',
-      description  = 'Dependency check and publish scripts',
-      author       = 'Orcan Ogetbil',
+      version      = '0.7.0',
+      description  = 'Dependency checking and publish scripts',
+      author       = 'Open System Solutions',
       author_email = 'oss@oss.rutgers.edu',
-      url          = 'http://cvs.rutgers.edu/cgi-bin/viewvc.cgi/trunk/orcan/rutgers-repotools/',
+      url          = 'https://github.com/oss/rutgers-repotools/',
       license      = 'GPLv2+',
       platforms    = ['linux'],
-      long_description  = """This package contains the tools we use to check the dependencies of
-                             new packages. This also installs a daily cron job which checks
-                             the dependency situation in the rutgers tree and sends an email
-                             if there is anything broken.""",
+      long_description  = """This package contains Rutgers tools needed to check
+        the dependencies of new packages. This also installs a daily cron job
+        which checks for broken dependencies in the Rutgers tree and sends email
+        to report problems.
+      """,
       packages     = ['RUtools'],
       package_dir  = {'RUtools': 'lib'},
-      data_files   = [('/etc', ['conf/depcheck.ignore', 'conf/rutgers-repotools.cfg', 'conf/rutgers-repotools-centos6.cfg', 'conf/depcheck6.ignore']),
-                      ('/etc/cron.daily', ['cron/daily_checks', 'cron/depcheck_rutgers', 'cron/depcheck_rutgers6', 'cron/backup_rpmfind.sh'])],
-      scripts      = ['bin/checkrepo',
-                      'bin/checkrepo6',
-                      'bin/populate-rpmfind-db',
+      data_files   = [('/etc', ['conf/depcheck.ignore.sample', 'conf/rutgers-repotools.cfg.sample']),
+                      ('/etc/cron.daily', ['cron/daily_checks'])],
+      scripts      = ['bin/depcheck',
+                      'bin/koji-backup',
                       'bin/movepackage',
+                      'bin/populate-rpmfind-db',
                       'bin/pullpackage',
                       'bin/pushpackage',
                       'bin/rebuild-repos',
-                      'bin/populate-rpmfind-db6',
-                      'bin/movepackage6',
-                      'bin/pullpackage6',
-                      'bin/pushpackage6',
-                      'bin/rebuild-repos6',
-	              'bin/automagiccheck.py',
-		      'bin/kojibackup.sh']
+                      'bin/repocheck',
+                      'bin/rpmdb-backup']
      )

@@ -445,10 +445,10 @@ def create_tables(app, dbase):
 def update_db(app, clean=False, create=False, removeoldpkg=False):
     """ Wrapper function that governs everything """
     my_conv = { FIELD_TYPE.LONG: int }
-    db_host = app.config.get("rpm2phpdb", "host")
-    db_user = app.config.get("rpm2phpdb", "user")
-    db_pw   = app.config.get("rpm2phpdb", "password")
-    db_name = app.config.get("rpm2phpdb", "name")
+    db_host = app.config.get("rpmdb", "host")
+    db_user = app.config.get("rpmdb", "user")
+    db_pw   = app.config.get("rpmdb", "password")
+    db_name = app.config.get("rpmdb", "name")
 
     dbase = _mysql.connect(db_host, db_user, db_pw, db_name, conv=my_conv)
 

@@ -10,11 +10,14 @@ serverca            = /etc/pki/koji/koji_ca_cert.crt
 # The address at which Koji Hub lives
 hub                 = http://localhost/kojihub
 
+# The location for Koji backups
+backupdir           = /usr/koji/backups
+
 # The folder on this machine where packages are generated
-pkgdir              = /usr/koji/package/
+pkgdir              = /usr/koji/packages/
 
 # Where packages live on Koji Web
-pkgdir_web          = http://localhost/packages/
+pkgdir_web          = http://localhost/koji/packages/
 
 # Web interfaces for Koji
 web_iface_private   = https://localhost/koji/
@@ -41,12 +44,11 @@ pushpackage         = /var/log/rutgers-repotools/pushpackage.log
 rebuild-repos       = /var/log/rutgers-repotools/rebuild-repos.log
 
 [repositories]
-# allrepos need to be in order: parent child grandchild ...
 # Distribution versions and releases. allreleases need to match alldistvers in order
 alldistvers         = 5 6
 allreleases         = ru ru6
 
-# All of the repositories being managed
+# All of the repositories being managed; must be in order (parent child ...)
 allrepos            = rutgers rutgers-testing rutgers-unstable rutgers-staging
 
 # The architectures packages are built for
@@ -69,7 +71,7 @@ dontpublishrepos    = rutgers-staging
 # Users must be in this group to have access
 groupowner          = packagepushers
 
-# Directories for repositories.
+# Directories for repositories
 repodir_private     = /usr/koji/private/
 repodir_public      = /usr/koji/public/
 repostodebug        = rutgers rutgers-testing
@@ -78,12 +80,10 @@ repostodebug        = rutgers rutgers-testing
 # allrepos and dontpublishrepos display names, in the same order
 allrepos_display    = Stable Testing Unstable Staging
 dontpublishrepos_display= Staging
-
-# Architecture to list in search results
 arch_display        = x86_64
 
-[rpm2phpdb]
-# Information for rpm2php and rpm2python
+[rpmdb]
+# Information for rpm2python
 host                = localhost
 name                = rpmdatabase
 user                = roji
@@ -95,5 +95,3 @@ user                = roji
 from_addr           = roji@koji.rutgers.edu
 to_addr             = youremail@example.com
 smtp_host           = localhost
-
-

@@ -1,0 +1,28 @@
+#!/bin/bash
+# koji_backup: Backs up the Koji database.
+#
+# This script is called by the daily_checks job and uses the Koji package
+# directory and backup directory specified in the configuration file:
+#
+# [koji]
+# pkgdir    = /usr/koji/packages
+# backupdir = /usr/koji/backups
+#
+# You can also specify another directory by running it by hand in the command
+# line.
+
+if [ $# -ne 2 ]; then
+    echo "Usage: koji-backup <koji-dir> <backup-dir>"
+    exit 1
+fi
+
+# Exit on error
+set -e
+
+# Dump Koji DB to local disk
+sudo -u koji pg_dump -C koji > /tmp/koji_dbdump.sql
+
+# Sync the backup to our backup location
+rsync --archive --sparse --delete "$1" "$2/packages"
+rsync --archive /tmp/koji_dbdump.sql "$2"
+rm -f /tmp/koji_dbdump

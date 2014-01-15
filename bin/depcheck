@@ -1,9 +1,11 @@
 #!/usr/bin/python
-""" Rebuilds rutgers rpm repos """
+""" Checks the stability of a rutgers repo. 
+    Also used by the daily depcheck cron job. """
+
 ###############################################################################
 #Programmer: Orcan Ogetbil    orcan@nbcs.rutgers.edu                          #
 #Date: 08/12/2010                                                             #
-#Filename: rebuild-repos                                                      #
+#Filename: checkrepo                                                          #
 #                                                                             #
 #                                                                             #
 #       Copyright 2010 Orcan Ogetbil                                          #
@@ -19,9 +21,8 @@
 #    GNU General Public License for more details.                             #
 #                                                                             #
 ###############################################################################
-#
 
 import RUtools
 
 if __name__ == '__main__':
-    RUtools.run_rebuild_repos(my_config_file='/etc/rutgers-repotools-centos6.cfg')
+    RUtools.run_depcheck()

@@ -71,23 +71,21 @@ EOF
 
 %files
 %defattr(-,root,root,-)
-%doc AUTHORS ChangeLog COPYING README
-%{_bindir}/automagiccheck.py
-%{_bindir}/checkrepo
+%doc AUTHORS CHANGELOG LICENSE README
+%{_bindir}/depcheck
+%{_bindir}/koji-backup
 %{_bindir}/movepackage
+%{_bindir}/populate-rpmfind-db
 %{_bindir}/pullpackage
 %{_bindir}/pushpackage
-%{_bindir}/kojibackup.sh
 %{_bindir}/rebuild-repos
-%{_bindir}/populate-rpmfind-db
+%{_bindir}/repocheck
+%{_bindir}/rpmdb-backup
 %{python_sitelib}/RUtools/
 %{python_sitelib}/rutgers_repotools-%{version}-py2.6.egg-info
-# TODO check this
 %config %{_sysconfdir}/cron.daily/daily_checks
-%config %{_sysconfdir}/cron.daily/depcheck_rutgers
-%config %{_sysconfdir}/cron.daily/backup_rpmfind.sh
-%config(noreplace) %{_sysconfdir}/depcheck.ignore
-%config(noreplace) %{_sysconfdir}/rutgers-repotools.cfg
+%config(noreplace) %{_sysconfdir}/depcheck.ignore.sample
+%config(noreplace) %{_sysconfdir}/rutgers-repotools.cfg.sample
 
 # The log directory and lock files should be owned by the group packagepushers
 %attr(4775, root, packagepushers) %dir /var/log/%{name}/
@@ -97,6 +95,8 @@ EOF
 %changelog
 * Thu Jan 16 2014 Kyle Suarez <kds124@nbcs.rutgers.edu> 0.7.0-1
 - Complete rehaul for version 0.7.0
+- Added new files, changed names, etc. See the README and CHANGELOG for detailed
+  information.
 
 * Wed May 01 2013 Matt Robinson <mwr54@nbcs.rutgers.edu> 0.6.5-5
 - Fixed an issue with lockfile checking and removed a redundant block of code

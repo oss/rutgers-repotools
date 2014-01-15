@@ -1,0 +1,54 @@
+#!/bin/bash
+# rpmdb-backup: A simple rotating backup script for the RPM database used by
+# rpm2python.
+#
+# This script is called by the daily_checks job and uses the
+# rpmdb information specified in the configuration file:
+#
+# [rpmdb]
+# name      = rpmfind
+# user      = roji
+# password  = password
+# backupdir = /usr/koji/rpmfind/backups
+#
+# [logs]
+# backupCount = 8
+#
+# You can specify other options by running it by hand on the command line.
+
+if [ $# -ne 5 ]; then
+    echo "Error: Usage: <bkupdir> <dbname> <user> <pass> <num-bkups>"
+    exit 1
+elif [ ! -d $1 ]; then
+    echo "Error: $1 is not a valid directory"
+    exit 1
+elif [ $5 -lt 1 ]; then
+    echo "Error: Must have at least one backup; $5 is not valid"
+    exit 1
+fi
+
+BACKUP_DIR=$1
+DBNAME=$2
+DBUSER=$3
+DBPASS=$4
+LAST_BACKUP=$(($5-1))
+
+# Exit on error
+set -e
+
+# First, make the backup directories if they don't exist
+for ((i=0; i<$LAST_BACKUP; i++)); do
+    mkdir -p "$BACKUP_DIR/backup.$i"
+done
+
+# Remove the oldest backup
+rm -rf "$BACKUP_DIR/backup.$LAST_BACKUP"
+
+# Next, rotate the backup folders
+for ((i=$LAST_BACKUP; i>=1; i--)); do
+    mv "$BACKUP_DIR/backup.$(($i-1))" "$BACKUP_DIR/backup.$i"
+done
+
+# Finally, make the newest backup
+mkdir -p "$BACKUP_DIR/backup.0/"
+mysqldump -u${DBUSER} -p${DBPASS} $DBNAME > "$BACKUP_DIR/backup.0/${DBNAME}.sql"

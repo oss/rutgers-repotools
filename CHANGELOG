@@ -1,19 +1,38 @@
 2014-01-16
+    - complete rehaul of the entire directory structure
     - changes to the config file (rutgers-repotools.cfg):
       + one universal config file, instead of one for each CentOS release
       + CentOS release "distver" removed from the config file
-      + added "alldistvers"
+      + added "alldistvers" to "repositories"
       + did some cleanup and published a sample config in the public Git repo
-    - included a sample depcheck.ignore
+      + changed section "rpm2phpdb" to "rpmdb"
+      + added "backupdir" to "rpmdb"
+    - included a sample depcheck.ignore and sample configuration file
     - only one wrapper for each script, instead of one for each version of
       CentOS
     - pushpackage, pullpackage, movepackage now take Koji-style repository
       arguments
     - rebuildrepos can now rebuild repositories for multiple versions of CentOS
       in one invocation
+    - fixed a bug where pushing or pulling a CentOS 5 package would mess with
+      things that are CentOS 6 and vice-versa
     - updated the cron scripts to reflect the new usage
     - updated the spec file; modified the descriptions of certain things and
       removed sensitive information from the post-install
+    - renamed cron job scripts to a consistent naming and moved them into the
+      script directory instead of the cron directory
+    - checkrepo has been rewritten
+      + uses argparse
+      + is fairly independent; could probably be rewritten into the mail library
+        at some point in the future
+      + does not check the unstable repository unless passed "--check-unstable"
+        as an option on the command line
+    - daily_checks has been rewritten as a Python script
+      + does four things: backs up Koji, backs up the rpm database, checks the
+        repository structure, and does dependency checking
+      + all these cron scripts now take values from the configuration file
+        instead of being hard-coded in
+
 2013-07-03
     - extra checks on exit to make sure owner perms are correct and in
       right group

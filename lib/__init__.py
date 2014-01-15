@@ -42,15 +42,16 @@ os.umask(002)
 def parse_distrepo(distrepo):
     """ Parses a distribution/repository name into its constituent parts.
 
-    Takes a full distribution and repository name like
-    'centos6-rutgers-staging' and splits it up into the appropriate parts.
-    If the name is badly formatted, this method returns None. Otherwise, it
-    returns a tuple containing (distname, distver, repository).
+    Takes a full distribution and repository name like 'centos6-rutgers-staging'
+    and splits it up into the appropriate parts.  If the name is badly
+    formatted, this method returns (None, None, None) - that is, None for all
+    parts. Otherwise, it returns a tuple containing (distname, distversion,
+    repository).
     
     For simplicity's sake, this assumes that the distribution version is a
     simple number after the distrepo name; this can be changed for
     future versions."""
-    # Future: if this becomes more complicated, feel free to replace the
+    # NOTE: if this becomes more complicated, feel free to replace the
     # loop with a proper regular expression.
     if distrepo is None:
         return None, None, None
@@ -69,7 +70,6 @@ def parse_distrepo(distrepo):
         return None, None, None
 
 
-
 def add_time_run(body, timerun):
     """ Adds a line to include time run on the email to be sent """
     timerun = str(timerun)
@@ -80,7 +80,8 @@ Time run: %s seconds
 """ % (timerun)
     return body
 
-def run_checkrepo(my_config_file='/etc/rutgers-repotools.cfg'):
+
+def run_depcheck(my_config_file='/etc/rutgers-repotools.cfg'):
     """ Runs the actual script """
     os.umask(002)
     myapp = rcommon.AppHandler(verifyuser=True,config_file=my_config_file)
@@ -121,11 +122,11 @@ def run_checkrepo(my_config_file='/etc/rutgers-repotools.cfg'):
 
     if len(args) != 1:
         print "Error: Invalid number of arguments: ", args
-        print "I only need 1 <repo> argument"
+        print "Exactly one repository argument is expected."
         myapp.exit(1)
 
     distro, distver, check_repo = parse_distrepo(args[0])
-    if (distro is None or distver is None or check_repo is None):
+    if distro is None or distver is None or check_repo is None:
         myapp.logger.error("Error: Badly formatted distribution, version or repository.")
         myapp.exit(1)
     if distro != distname:
@@ -145,8 +146,7 @@ def run_checkrepo(my_config_file='/etc/rutgers-repotools.cfg'):
     timerun = myapp.time_run()
     if results:
         if mail:
-            email_subject = myapp.config.get("repositories", "distname_nice") \
-                            + " - Broken dependencies"
+            email_subject = myapp.config.get("repositories", "distname_nice") + " - Broken dependencies"
             problem = "The routine daily check has found dependency problems.\n"
             email_body = problem + results
             email_body = add_time_run(email_body, timerun)
@@ -155,7 +155,6 @@ def run_checkrepo(my_config_file='/etc/rutgers-repotools.cfg'):
         myapp.logger.error("There are broken dependencies.")
 
     myapp.logger.info("\nSuccess! Time run: " + str(timerun) + " s")
-
     myapp.exit()
 
 
@@ -181,13 +180,12 @@ def run_populate_rpmfind_db(my_config_file='/etc/rutgers-repotools.cfg'):
         verbosity = logging.DEBUG
     else:
         verbosity = logging.INFO
-
     myapp.init_logger(verbosity)
 
-    # TODO check this. very naive
     distname = myapp.config.get("repositories", "distname_nice")
     alldistvers = myapp.config.get("repositories", "alldistvers")
     for distver in alldistvers:
+        myapp.distver = distver
         myapp.logger.info("Populating rpmfind database for {0} {1}...".format(
             distname, distver))
         populatedb.update_db(myapp, options.rebuild, options.rebuild)
@@ -283,6 +281,7 @@ def run_pullpackage(my_config_file='/etc/rutgers-repotools.cfg'):
         myapp.logger.info("Success! Time run: " + str(timerun) + " s")
 
     myapp.exit(0)
+
 
 def pullpackage(myapp, mail, test, force, distname, distver, from_repo,
                 packages, checkdep_from_repo=False):
