@@ -151,7 +151,7 @@ def run_depcheck(my_config_file='/etc/rutgers-repotools.cfg'):
             email_body = problem + results
             email_body = add_time_run(email_body, timerun)
             myapp.logger.warning("Sending email...")
-            sendspam.sendspam(myapp, email_subject, email_body)
+            sendspam.sendspam(myapp, email_subject, email_body, scriptname="depcheck")
         myapp.logger.error("There are broken dependencies.")
 
     myapp.logger.info("\nSuccess! Time run: " + str(timerun) + " s")
@@ -345,7 +345,7 @@ def pullpackage(myapp, mail, test, force, distname, distver, from_repo,
             timerun = myapp.time_run()
             myapp.logger.info("Finally, sending email.")
             email_body = add_time_run(pullresults[1], timerun)
-            sendspam.sendspam(myapp, pullresults[0], email_body)
+            sendspam.sendspam(myapp, pullresults[0], email_body, scriptname="pullpackage")
 
 
 def run_movepackage(my_config_file='/etc/rutgers-repotools.cfg'):
@@ -595,7 +595,7 @@ def pushpackage(myapp, mail, test, force, distname, distver, to_repo, packages,
             timerun = myapp.time_run()
             myapp.logger.info("Finally, sending email.")
             email_body = add_time_run(pushresults[1], timerun)
-            sendspam.sendspam(myapp, pushresults[0], email_body)
+            sendspam.sendspam(myapp, pushresults[0], email_body, scriptname="pushpackage")
 
 
 def run_rebuild_repos(my_config_file='/etc/rutgers-repotools.cfg'):
@@ -690,7 +690,7 @@ def depcheck_results(myapp, user, packages, results, mail):
                             + distver + " - Broken dependencies"
             email_body = guilt + add_time_run(results, timerun)
             myapp.logger.warning("Sending email...")
-            sendspam.sendspam(myapp, email_subject, email_body)
+            sendspam.sendspam(myapp, email_subject, email_body, scriptname="depcheck")
         myapp.logger.error(guilt)
         myapp.logger.error("There are broken dependencies. We stop here.")
         myapp.logger.info("\nTime run: " + str(timerun) + " s")
