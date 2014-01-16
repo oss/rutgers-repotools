@@ -340,11 +340,11 @@ def create_tmp_repo(app, packages, arch, removalfromrepo = ""):
                          buildinfo['name'] + '/' + buildinfo['version'] + \
                          '/' + buildinfo['release']
             # First copy arch specific RPM's
+            # TODO the arch thing so it looks cooler and not dumb
             try:
                 rpmfiles = os.listdir(packagedir+'/'+arch)
                 for rpmfile in rpmfiles:
-                    if (rpmfile.endswith('.rpm') and
-                        string.find(rpmfile, 'debuginfo')) == -1:
+                    if (rpmfile.endswith('.rpm') and string.find(rpmfile, 'debuginfo')) == -1:
                         app.logger.info("Adding " + rpmfile)
                         os.symlink(packagedir + "/" + arch + "/" + rpmfile,
                                    tempdir + "/" + rpmfile)
@@ -418,7 +418,6 @@ def doit(app, repotype, packages = [], removal = False):
             app.logger.info("We are clean. No broken dependencies.")
         for pkg in pkgs:
             srcpkg = get_src_pkg(pkg)
-
 
             if not DEPS.has_key(srcpkg):
                 DEPS[srcpkg] = {}

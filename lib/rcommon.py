@@ -50,7 +50,6 @@ class AppHandler:
             self._lockfilename = self.config.get("locks", self._callername)
         except ConfigParser.NoOptionError:
             self._lockfilename = None
-        #print "We were called from " + self._callername
 
         self._start_time = time.time()
         self.logger = None
@@ -90,11 +89,6 @@ class AppHandler:
             print "Error: The user who runs this script must belong to the group: " + self.groupowner
             sys.exit(1)
 
-    def get_distver(self):
-        if self.distver is None:
-            self.logger.warning("WARNING: distver is None. Bad things will happen")
-        return self.distver
-
     def load_config(self, config_file):
         """ Load configuration from file """
         self.config = ConfigParser.ConfigParser()
@@ -106,7 +100,7 @@ class AppHandler:
 
     def check_lock(self):
         """ Stop if there is a lock file for this application """
-        if self._lockfilename == None:
+        if self._lockfilename is None:
             print "No lockfile specified in the configuration for the application."
             sys.exit(1)
         lockers = self.config.options('locks')
@@ -168,7 +162,6 @@ class AppHandler:
                     os.chown(os.path.join(root, path), -1, gid, follow_symlinks=False)
         else:
             self.logger.info("Group id is + " + gid + "; no chowning needed")
-
 
         # Make sure the log file ends up with the right group owner:
         if self._logfile:

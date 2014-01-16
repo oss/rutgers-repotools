@@ -145,7 +145,7 @@ def remove_old(app, kojisession, dbase):
     for rel in zip(all_distvers, all_releases):
         if int(relver) == int(rel(0)):
             release = rel(1)
-            selection_query = "select distinct build_id from Packages where Rel=" + release)
+            selection_query = "select distinct build_id from Packages where Rel=" + release
             break
     else:
         app.logger.warning("Release not found while removing old packages. All matching packages from all releases will be removed.")

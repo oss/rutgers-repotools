@@ -22,7 +22,6 @@
 import os
 import errno
 import shutil
-import sys
 import string
 import tempfile
 import createrepo
@@ -167,7 +166,9 @@ def create_debug_repo(app, kojisession, repos_tmpdir):
 
 def create_repo(app, kojisession, repo, repos_tmpdir):
     """ Create a repo. Uses the old repo metadata, if exists, for speed """
-    publishrepos = get_publishrepos(app)
+    # Uncomment this to strip out those RPMs that are in the parent repos
+    # already
+    # publishrepos = get_publishrepos(app)
     relver = app.distver
     repos_dir = app.config.get('repositories', 'repodir_private')
     relname = app.config.get('repositories', 'distname')

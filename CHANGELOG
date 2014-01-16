@@ -7,13 +7,13 @@
       + did some cleanup and published a sample config in the public Git repo
       + changed section "rpm2phpdb" to "rpmdb"
       + added "backupdir" to "rpmdb"
-    - included a sample depcheck.ignore and sample configuration file
     - only one wrapper for each script, instead of one for each version of
       CentOS
     - pushpackage, pullpackage, movepackage now take Koji-style repository
-      arguments
+      arguments (e.g. centos6-rutgers-testing)
     - rebuildrepos can now rebuild repositories for multiple versions of CentOS
       in one invocation
+    - movepackage has the ability to move a package from CentOS 5 to 6, etc.
     - fixed a bug where pushing or pulling a CentOS 5 package would mess with
       things that are CentOS 6 and vice-versa
     - updated the cron scripts to reflect the new usage
@@ -21,7 +21,7 @@
       removed sensitive information from the post-install
     - renamed cron job scripts to a consistent naming and moved them into the
       script directory instead of the cron directory
-    - checkrepo has been rewritten
+    - checkrepo.py has been rewritten: new name is checkdep.py
       + uses argparse
       + is fairly independent; could probably be rewritten into the mail library
         at some point in the future
@@ -32,13 +32,15 @@
         repository structure, and does dependency checking
       + all these cron scripts now take values from the configuration file
         instead of being hard-coded in
-
+    - included a sample depcheck.ignore and sample configuration file
+    - documentation in the README has been updated
+    - moved scripts from cron folder to bin folder (only daily_checks is left in
+      the cron folder)
 2013-07-03
     - extra checks on exit to make sure owner perms are correct and in
       right group
 2013-07-02
     - added more verbose output when operating system errors occur
-    - (all changes after this point are not yet pushed to stable on omachi)
 2013-4-18 (0.6.5)
     - updated to check if locks can be deleted (if the process that created
       the lock is no longer running).

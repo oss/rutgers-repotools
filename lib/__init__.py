@@ -353,6 +353,7 @@ def run_movepackage(my_config_file='/etc/rutgers-repotools.cfg'):
     myapp = rcommon.AppHandler(verifyuser=True,config_file=my_config_file)
 
     # Repository information
+    # Note that you may pull from the staging repository but not pull from it
     versions = myapp.config.get("repositories", "alldistvers")
     distname = myapp.config.get("repositories", "dist")
     from_repos = myapp.config.get("repositories", "allrepos").split()
@@ -408,8 +409,6 @@ def run_movepackage(my_config_file='/etc/rutgers-repotools.cfg'):
     to_distro, to_distver, to_repo = parse_distrepo(args[1])
 
     # Sanity checks
-    # NOTE: This naively assumes that you can't move across distvers or
-    # distros. We leave this here for possible future changes
     if from_distro is None or from_distver is None or from_repo is None:
         myapp.logger.error("Error: Badly formatted source distribution, version or repository.")
         myapp.exit(1)
@@ -432,17 +431,13 @@ def run_movepackage(my_config_file='/etc/rutgers-repotools.cfg'):
         myapp.logger.error( "Error: Invalid to_repo: " + to_repo)
         myapp.exit(1)
     if from_repo == to_repo:
-        myapp.logger.error("Error: from_repo cannot be equal to to_repo")
+        myapp.logger.error("Error: from_repo cannot be equal to to_repo.")
         myapp.exit(1)
 
+    myapp.distver = to_distver
+    pushpackage(myapp, mail, options.test, options.force, to_distro, to_distver, to_repo, packages, True)
     myapp.distver = from_distver
-    myapp.from_distver = from_distver
-    myapp.to_distver = to_distver
-
-    pushpackage(myapp, mail, options.test, options.force, to_distro, to_distver, to_repo, packages,
-                True)
-    pullpackage(myapp, mail, options.test, options.force, from_distro, from_distver, from_repo, packages,
-                True)
+    pullpackage(myapp, mail, options.test, options.force, from_distro, from_distver, from_repo, packages, True)
 
     timerun = myapp.time_run()
     if options.test:
@@ -484,27 +479,23 @@ def run_pushpackage(my_config_file="/etc/rutgers-repotools.cfg"):
                       action="store_true",
                       help="Verbose output.")
 
+    # Parse the command line arguments
     (options, args) = parser.parse_args(sys.argv[1:])
-    myapp.create_lock()
-
-    if options.verbose:
-        verbosity = logging.DEBUG
-    else:
-        verbosity = logging.INFO
-    myapp.init_logger(verbosity)
-
     if len(args) < 2:
         myapp.logger.error("Error: Too few arguments: " + str(args))
         myapp.logger.error("Run with --help to see correct usage")
         myapp.exit(1)
 
-    if options.nomail:
-        mail = False
-    else:
-        mail = True
+    # Create the lock file
+    myapp.create_lock()
 
+    # Set the logger and other options
+    verbosity = logging.DEBUG if options.verbose else logging.INFO
+    myapp.init_logger(verbosity)
+    mail = not options.nomail
     if options.test:
         mail = False
+        test = True
         myapp.logger.warning("This is a test run. No packages will be pushed. No emails will be sent.")
 
     # Examine the arguments
@@ -530,7 +521,7 @@ def run_pushpackage(my_config_file="/etc/rutgers-repotools.cfg"):
     # Run the script and time it
     localtime = time.asctime(time.localtime(time.time()))
     myapp.logger.info("Push started on", localtime)
-    pushpackage(myapp, mail, options.test, options.force, distname, distver, to_repo, packages)
+    pushpackage(myapp, mail, test, options.force, distname, distver, to_repo, packages)
     timerun = myapp.time_run()
     if options.test:
         myapp.logger.warning("End of test run. " + str(timerun) + " s")

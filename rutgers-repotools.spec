@@ -37,11 +37,6 @@ python setup.py build
 rm -rf $RPM_BUILD_ROOT
 python setup.py install -O1 --skip-build --root $RPM_BUILD_ROOT
 
-# In order webtools' runas to work
-chmod -w $RPM_BUILD_ROOT/%{_bindir}/movepackage
-chmod -w $RPM_BUILD_ROOT/%{_bindir}/pullpackage
-chmod -w $RPM_BUILD_ROOT/%{_bindir}/pushpackage
-chmod -w $RPM_BUILD_ROOT/%{_bindir}/populate-rpmfind-db
 mkdir -p $RPM_BUILD_ROOT/var/lock/rutgers-repotools
 
 %clean
@@ -54,14 +49,9 @@ the dependency checks for us, in case it was not already created. Refer to
 "Adding a User to Koji" for detailed information about the certificate
 generation process.
 
-Also, a MySQL database needs to be created with write permisson, to be used by
-rpm2python. See the Rutgers Repository Tools wiki page for detailed information
-on making the database from scratch.
-
-Symlinks to movepackage, pullpackage, pushpackage and populate-rpmfind-database
-need to be created in webtools webbin directory to make runas work, for
-managing packages through rpm2php. The symlinks must have the same owner with
-the actual scripts.
+Furthermore, you need to set up the MySQL database to be used by rpm2python if
+you have not done so already. See the Rutgers Repository Tools wiki page for
+detailed information on making the database from scratch.
 
 The configuration file /etc/rutgers-repotools.cfg will need to be put on NFS
 and symlinked to /etc, so that other machines can also use the same .cfg file
@@ -71,7 +61,7 @@ EOF
 
 %files
 %defattr(-,root,root,-)
-%doc AUTHORS CHANGELOG LICENSE README
+%doc CHANGELOG LICENSE README
 %{_bindir}/depcheck
 %{_bindir}/koji-backup
 %{_bindir}/movepackage
@@ -93,16 +83,17 @@ EOF
 
 
 %changelog
-* Thu Jan 16 2014 Kyle Suarez <kds124@nbcs.rutgers.edu> 0.7.0-1
+* Thu Jan 16 2014 Kyle Suarez <kds124@nbcs.rutgers.edu> 0.7.0-1.ru6
 - Complete rehaul for version 0.7.0
 - Added new files, changed names, etc. See the README and CHANGELOG for detailed
   information.
 
-* Wed May 01 2013 Matt Robinson <mwr54@nbcs.rutgers.edu> 0.6.5-5
+* Wed May 01 2013 Matt Robinson <mwr54@nbcs.rutgers.edu> 0.6.5-5.ru6
 - Fixed an issue with lockfile checking and removed a redundant block of code
 
 * Mon Apr 29 2013 Indraneel Purohit <ip132@nbcs.rutgers.edu> 0.6.5-4.ru6
-- Moved automagiccheck.py and kojibackup.sh to /usr/bin/, added script to call both to cron.daily
+- Moved automagiccheck.py and kojibackup.sh to /usr/bin/, added script to call
+  both to cron.daily
 
 * Thu Apr 25 2013 Jarek Sedlacek <jarek@nbcs.rutgers.edu> 0.6.5-3.ru6
 - Added backup_rpmfind.sh to cron.daily
@@ -120,10 +111,13 @@ EOF
 - bumped to version 0.6.4
 * Wed Jan 30 2013 Jarek Sedlacek <jarek@nbcs.rutgers.edu> - 0.6.3-3.ru
 - Updated depcheck cron scripts to check both stable and testing repos
+
 * Tue Jan 22 2013 Jarek Sedlacek <jarek@nbcs.rutgers.edu> - 0.6.3-1.ru
 - Included checkrepo6 binary in package (bump to 0.6.3)
+
 * Wed Nov 07 2012 Jarek Sedlacek <jarek@nbcs.rutgers.edu> - 0.6.2-1.ru
 - Updated to 0.6.2
+
 * Wed Jun 13 2012 Kaitlin Poskaitis <katiepru@nbcs.rutgers.edu> - 0.6.1-1.ru
 - Updated to 0.6.1
 
