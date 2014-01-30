@@ -21,11 +21,13 @@ the from_repo and copies the corresponding debuginfo subpackages. """
 ###############################################################################
 
 
-def check_packages(app, kojisession, packages, from_repo):
+def check_packages(app, kojisession, packages, to_repo):
     """ Check if the given packages are really there
     If they are, return the tags associated with them"""
     clean = True
 
+    # NOTE: This should be replaced by a more sophisticated check,
+    # and the common ground between push and pull should be pulled out
     for package in packages:
         if package.count("-") < 2 or package[0] == "-" or package[-1] == "-":
             app.logger.error("Error: Invalid NVR fromat: " + package)
@@ -34,27 +36,34 @@ def check_packages(app, kojisession, packages, from_repo):
     if clean == False:
         app.exit(2)
 
-    pkgstags = []
+    allpkgtags = []
     for package in packages:
-        binfo = kojisession.getBuild(package)
+        # Get the build information from Koji
+        buildinfo = kojisession.getBuild(package)
         pkgtags = []
-        if binfo:
-            btag = kojisession.listTags(package)
-            for tag in btag:
-                pkgtags.append(tag["name"][tag["name"].find("-")+1:])
-            if not from_repo in pkgtags:
-                app.logger.error("Error: " + package + " is not in the "
-                                 + from_repo + " repo.")
+        if buildinfo:
+            # Find all tags associated with this package
+            tags = kojisession.listTags(package)
+            for tag in tags:
+                pkgtags.append(tag["name"])
+
+            if not pkgtags:
+                # Contains no Koji tags
+                app.logger.error('Package {0} has no valid tags!'.format(package))
+                clean = False
+            if to_repo in pkgtags:
+                # Already exists in the target repository
+                app.logger.error('Package {0} already exists in {1}.'.format(package, to_repo))
                 clean = False
         else:
-            app.logger.error("Error: " + package + " not found in koji.")
+            # Nothing found in Koji
+            app.logger.error("Package {0} does not exist in Koji.".format(package))
             clean = False
-        pkgstags.append(pkgtags)
+        allpkgtags.append(pkgtags)
 
     if clean == False:
         app.exit(2)
-
-    return pkgstags
+    return allpkgtags
 
 
 def debug_check(app, packages):
@@ -107,11 +116,11 @@ def pull_packages(app, kojisession, packages, from_repo, user):
     distname_nice = app.config.get("repositories", "distname_nice")
     email_subject = distname_nice + " - Pull Successful: " + packagelist
     email_body = """
-The following package(s) are pulled by %s from %s :
+The following packages have been pulled by %s from %s :
 
 %s
 
-The repos are regenerated. The package(s) are ready to use.
+The repositories are regenerated and the packages are ready to use.
 
 """ % (user, from_repo, message)
     return [email_subject, email_body]

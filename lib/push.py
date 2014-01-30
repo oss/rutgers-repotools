@@ -21,12 +21,14 @@ and copies the corresponding debuginfo subpackages. """
 ###############################################################################
 
 import datetime
+import sendspam
 
 def check_packages(app, kojisession, packages, to_repo):
     """ Check if the given packages are really there
     If they are, return the tags associated with them"""
     clean = True
 
+    # NOTE: This should be replaced by a more sophisticated check
     for package in packages:
         if package.count("-") < 2 or package[0] == "-" or package[-1] == "-":
             app.logger.error("Error: Invalid NVR fromat: " + package)
@@ -35,34 +37,38 @@ def check_packages(app, kojisession, packages, to_repo):
     if clean == False:
         app.exit(2)
 
-    pkgstags = []
+    allpkgtags = []
     for package in packages:
-        binfo = kojisession.getBuild(package)
+        # Get the build information from Koji
+        buildinfo = kojisession.getBuild(package)
         pkgtags = []
-        if binfo:
-            btag = kojisession.listTags(package)
-            for tag in btag:
-                pkgtags.append(tag["name"][tag["name"].find("-")+1:])
+        if buildinfo:
+            # Find all tags associated with this package
+            tags = kojisession.listTags(package)
+            for tag in tags:
+                pkgtags.append(tag["name"])
+
             if not pkgtags:
-                app.logger.error('Package ' +  str(package) + ' has no valid tags!')
-                app.exit(3)
+                # Contains no Koji tags
+                app.logger.error('Package {0} has no valid tags!'.format(package))
+                clean = False
             if to_repo in pkgtags:
-                app.logger.error("Error: " + package + " is already in the "
-                                 + to_repo + " repo.")
+                # Already exists in the target repository
+                app.logger.error('Package {0} already exists in {1}.'.format(package, to_repo))
                 clean = False
         else:
-            app.logger.error("Error: " + package + " not found in koji.")
+            # Nothing found in Koji
+            app.logger.error("Package {0} does not exist in Koji.".format(package))
             clean = False
-        pkgstags.append(pkgtags)
+        allpkgtags.append(pkgtags)
 
     if clean == False:
         app.exit(2)
-
-    return pkgstags
+    return allpkgtags
 
 def debug_check(app, packages):
     """ Check whether the given packages have associated debuginfo packages. """
-    kojitmpsession = app.get_koji_session(ssl = False)
+    kojitmpsession = app.get_koji_session(ssl=False)
 
     for package in packages:
         build = kojitmpsession.getBuild(package)
@@ -100,9 +106,10 @@ def get_replaced_packages(app,kojisession,packages,to_repo):
     return replaced_pkgs
 
 
-def push_packages(app, kojisession, packages, to_repo, user,test):
+def push_packages(app, kojisession, packages, to_repo, user, test):
     """ Tag into the to_repo. Return a message with the results
     to be emailed """
+    # NOTE: This could use some cleanup in the future
     kojitmpsession = app.get_koji_session(ssl = False)
     kojisession.multicall = True
 
@@ -120,7 +127,7 @@ def push_packages(app, kojisession, packages, to_repo, user,test):
         app.logger.info("Tagging " + package + " into " + to_repo)
         if not test:
             kojisession.tagBuildBypass(to_repo, package)
-        message += package+"\n"
+        message += "\t" + package + "\n"
         packagelist += package+", "
         changelogs += """
 %s
@@ -143,35 +150,47 @@ def push_packages(app, kojisession, packages, to_repo, user,test):
     results = kojisession.multiCall()
 
     clean = True
+    errors = []
     for i in range(len(results)):
         try:
             if results[i]['faultString']:
                 app.logger.error("Error: " + results[i]['faultString'])
+                errors.append("Error: " + results[i]['faultString'])
                 clean = False
         except (KeyError, TypeError):
             pass
+
+    # Prepare for the email
+    distname = app.config.get("repositories", "distname_nice")
+    distver = app.distver
+
     if clean == False:
+        email_subject = "{0} {1} - Push Failed - {2}".format(distname, distver, packagelist)
+        email_body = "\n".join(errors)
+        sendspam.sendspam(app, email_subject, email_body, scriptname="pushpackage")
         app.exit(2)
-
-    distname_nice = app.config.get("repositories", "distname_nice")
-    email_subject = distname_nice + " - Push Successful: " + packagelist
-    if test:
-        test_msg = "TEST: nothing actually applied"
     else:
-        test_msg = ""
-    email_body = """
-%s
-The following package(s) are pushed by %s to %s :
+        replaced = '\t\n'.join(replaced_pkgs)
+        email_subject = "{0} {1} - Push Successful - {2}".format(distname, distver, packagelist)
+        email_body = []
 
-%s
+        if test:
+            email_body.append("Test Results")
+            email_body.append("(No packages have actually been pushed.)\n")
 
-The following package(s) were pulled from %s:
+        email_body.append("""
+The following packages have been pushed by {0} to {1} :
 
-%s
+{3}
 
-The repos are regenerated. The package(s) are ready to use.
+The following packages were pulled from {1}:
 
-Changelogs:
-%s
-""" % (test_msg, user, to_repo, message, to_repo, '\n'.join(replaced_pkgs), changelogs)
-    return [email_subject, email_body]
+{4}
+
+The repositories are regenerated and the packages are ready to use.
+
+Recent changes:
+{5}
+    """.format(user, to_repo, message, replaced, changelogs))
+
+        return [email_subject, email_body]
