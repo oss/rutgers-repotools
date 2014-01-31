@@ -22,7 +22,7 @@
 import sys
 import smtplib
 
-def sendspam(app, subject, body, scriptname=""):
+def sendspam(app, subject, body, scriptname="sendspam"):
     """ Sends mail with the results of a report. """
     fromaddr = app.config.get("report", "from_addr")
     toaddrs = app.config.get("report", "to_addr")

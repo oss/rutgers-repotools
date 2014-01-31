@@ -138,7 +138,7 @@ class AppHandler:
 
     def exit(self, status=0):
         """ Exit from application gracefully """
-        self.logger.info("Beginning exit and cleanup.")
+        self.logger.debug("Beginning exit and cleanup.")
         if self._lockfilename:
             AppHandler.remove_lock(self._lockfilename)
 
@@ -147,10 +147,8 @@ class AppHandler:
 
         # Check to make sure current process is in correct group
         allgroups = os.getgroups()
-        if gid in allgroups:
-            self.logger.info("Group privileges look okay.")
-        else:
-            self.logger.warning("Current process not in proper group (" + gid + "); chown required")
+        if not gid in allgroups:
+            self.logger.warning("Current process is not in the proper group ({0}).".format(gid))
 
         if os.stat(private_dir)[5] != gid:
             self.logger.info("Chowning " + private_dir + " to group " + self.groupowner)
@@ -161,7 +159,7 @@ class AppHandler:
                 for path in files:
                     os.chown(os.path.join(root, path), -1, gid, follow_symlinks=False)
         else:
-            self.logger.info("Group id is + " + gid + "; no chowning needed")
+            self.logger.debug("Group ID is {0}: all systems go.".format(gid))
 
         # Make sure the log file ends up with the right group owner:
         if self._logfile:

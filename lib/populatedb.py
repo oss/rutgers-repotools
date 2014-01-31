@@ -136,8 +136,8 @@ def populate_database(dbase, content):
 
 def remove_old(app, kojisession, dbase):
     """ Delete package entries from database """
-    all_distvers = app.config.get("repositories", "alldistvers")
-    all_releases = app.config.get("repositories", "allreleases")
+    all_distvers = app.config.get("repositories", "alldistvers").split()
+    all_releases = app.config.get("repositories", "allreleases").split()
     relver = app.distver
     relname = app.config.get("repositories", "distname")
 
@@ -148,7 +148,8 @@ def remove_old(app, kojisession, dbase):
             selection_query = "select distinct build_id from Packages where Rel=" + release
             break
     else:
-        app.logger.warning("Release not found while removing old packages. All matching packages from all releases will be removed.")
+        app.logger.warning("Release not found while removing old packages.")
+        app.logger.warning("Reverting to old behavior: all matching packages from all releases will be removed.")
         selection_query = "select distinct build_id from Packages"
 
     # We only want packages for our current distver

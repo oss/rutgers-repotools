@@ -86,8 +86,8 @@ def run_depcheck(my_config_file='/etc/rutgers-repotools.cfg'):
     os.umask(002)
     myapp = rcommon.AppHandler(verifyuser=True,config_file=my_config_file)
 
-    versions = myapp.config.get("repositories", "alldistvers")
-    distname = myapp.config.get("repositories", "dist")
+    versions = myapp.config.get("repositories", "alldistvers").split()
+    distname = myapp.config.get("repositories", "distname")
     repos = get_publishrepos(myapp)
     repos.append("upstream")
 
@@ -183,7 +183,7 @@ def run_populate_rpmfind_db(my_config_file='/etc/rutgers-repotools.cfg'):
     myapp.init_logger(verbosity)
 
     distname = myapp.config.get("repositories", "distname_nice")
-    alldistvers = myapp.config.get("repositories", "alldistvers")
+    alldistvers = myapp.config.get("repositories", "alldistvers").split()
     for distver in alldistvers:
         myapp.distver = distver
         myapp.logger.info("Populating rpmfind database for {0} {1}...".format(
@@ -202,14 +202,14 @@ def run_pullpackage(my_config_file='/etc/rutgers-repotools.cfg'):
     myapp = rcommon.AppHandler(verifyuser=True,config_file=my_config_file)
 
     # Grab repository information
-    versions = myapp.config.get("repositories", "alldistvers")
-    distname = myapp.config.get("repositories", "dist")
+    versions = myapp.config.get("repositories", "alldistvers").split()
+    distname = myapp.config.get("repositories", "distname")
     from_repos = myapp.config.get("repositories", "allrepos").split()
 
     usage =  "usage: %prog [options] <distro>-<from_repo> <package(s)>\n\n"
     usage += "  <distro>     one of: " + string.join([distname + v for v in versions], " ") + "\n"
     usage += "  <from_repo>     one of: " + string.join(from_repos, " ") + "\n"
-    usage += "  <package(s)>    either in NVR format"
+    usage += "  <package(s)>    A list of packages in NVR format"
     parser = OptionParser(usage)
     parser.add_option("--nomail",
                       action="store_true",
@@ -354,8 +354,8 @@ def run_movepackage(my_config_file='/etc/rutgers-repotools.cfg'):
 
     # Repository information
     # Note that you may pull from the staging repository but not pull from it
-    versions = myapp.config.get("repositories", "alldistvers")
-    distname = myapp.config.get("repositories", "dist")
+    versions = myapp.config.get("repositories", "alldistvers").split()
+    distname = myapp.config.get("repositories", "distname")
     from_repos = myapp.config.get("repositories", "allrepos").split()
     to_repos = get_publishrepos(myapp)
 
@@ -363,7 +363,7 @@ def run_movepackage(my_config_file='/etc/rutgers-repotools.cfg'):
     usage += "  <distro>        one of: " + string.join([distname + v for v in versions], " ") + "\n"
     usage += "  <from_repo>     one of: " + string.join(from_repos, " ") + "\n"
     usage += "  <to_repo>       one of: " + string.join(to_repos, " ") + "\n"
-    usage += "  <package(s)>    either in NVR format or: all"
+    usage += "  <package(s)>    A list of packages in NVR format"
     parser = OptionParser(usage)
     parser.add_option("--nomail",
                       action="store_true",
@@ -454,8 +454,8 @@ def run_pushpackage(my_config_file="/etc/rutgers-repotools.cfg"):
     myapp = rcommon.AppHandler(verifyuser=True,config_file=my_config_file)
 
     # Grab all the repository information from the config file
-    versions = myapp.config.get("repositories", "alldistvers")
-    distname = myapp.config.get("repositories", "dist")
+    versions = myapp.config.get("repositories", "alldistvers").split()
+    distname = myapp.config.get("repositories", "distname")
     to_repos = get_publishrepos(myapp)
 
     # Usage, etc.
@@ -495,7 +495,6 @@ def run_pushpackage(my_config_file="/etc/rutgers-repotools.cfg"):
     mail = not options.nomail
     if options.test:
         mail = False
-        test = True
         myapp.logger.warning("This is a test run. No packages will be pushed. No emails will be sent.")
 
     # Examine the arguments
@@ -521,7 +520,7 @@ def run_pushpackage(my_config_file="/etc/rutgers-repotools.cfg"):
     # Run the script and time it
     localtime = time.asctime(time.localtime(time.time()))
     myapp.logger.info("Push started on", localtime)
-    pushpackage(myapp, mail, test, options.force, distname, distver, to_repo, packages)
+    pushpackage(myapp, mail, options.test, options.force, distname, distver, to_repo, packages)
     timerun = myapp.time_run()
     if options.test:
         myapp.logger.warning("End of test run. " + str(timerun) + " s")
@@ -603,8 +602,8 @@ def run_rebuild_repos(my_config_file='/etc/rutgers-repotools.cfg'):
     os.umask(002)
     myapp = rcommon.AppHandler(verifyuser=True,config_file=my_config_file)
 
-    versions = myapp.config.get("repositories", "alldistvers")
-    distname = myapp.config.get("repositories", "dist")
+    versions = myapp.config.get("repositories", "alldistvers").split()
+    distname = myapp.config.get("repositories", "distname")
     debugrepo = myapp.config.get("repositories", "debugrepo")
     repos = get_publishrepos(myapp)
     repos.append(debugrepo)

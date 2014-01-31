@@ -1,4 +1,9 @@
-2014-01-16
+2014-01-31 (0.7.2)
+    - More bug fixes, especially with the new config file sections
+    - Fixed some typos
+2014-01-17 (0.7.1)
+    - Bug fixes
+2014-01-16 (0.7.0)
     - complete rehaul of the entire directory structure
     - changes to the config file (rutgers-repotools.cfg):
       + one universal config file, instead of one for each CentOS release
