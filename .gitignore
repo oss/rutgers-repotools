@@ -5,10 +5,3 @@
 # Ignore our configuration files, offering up samples instead
 conf/depcheck.ignore
 conf/rutgers-repotools.cfg
-
-# Jobs
-cron/daily_checks
-cron/depcheck_rutgers
-cron/repocheck_rutgers
-cron/koji_backup
-cron/rpmdatabase_backup

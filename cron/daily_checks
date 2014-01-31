@@ -1,0 +1,138 @@
+#!/usr/bin/env python2
+"""
+Daily checks to be done on the repositories, including backups and dependency
+checking. For best results, this should be run as a cron job; however it can
+also be run manually via the command line.
+
+Many settings used by these scripts are taken from the configuration file, which
+by default is installed to /etc/rutgers-repotools.cfg. If needed, you can
+specify your own custom configuration file as a command line argument.
+
+Scripts run by this file:
+    - repocheck
+    - depcheck (see depcheck.py)
+    - koji_backup
+    - rpmdb_backup
+"""
+
+import ConfigParser
+import argparse
+import os
+import sys
+
+
+class App():
+    """
+    Helper class for executing the checks.
+    """
+    def __init__(self, config_file, verbose, no_mail, check_unstable):
+        """
+        Initialize variables and run preliminary checks.
+        """
+        self.config_file = config_file
+        self.verbose = verbose
+        self.no_mail = no_mail
+        self.check_unstable = check_unstable
+
+        # Sanity checks
+        if config_file is None:
+            raise Exception("Failed to find a valid configuration file.")
+        elif not os.path.isfile(config_file):
+            raise Exception("No such config file: {0}".format(config_file))
+
+        # Now, load the configuration file
+        self.config = ConfigParser.ConfigParser()
+        self.config.read(config_file)
+
+    def run(self):
+        """
+        Run the actual scripts.
+        """
+        self.koji_backup()
+        self.rpmdb_backup()
+        self.repocheck()
+        self.depcheck()
+
+    def koji_backup(self):
+        """
+        Runs the Koji backup script.
+        """
+        cmd = ["koji_backup"]
+        cmd.append(self.config.get("koji", "pkgdir"))
+        cmd.append(self.config.get("koji", "backupdir"))
+        cmd.append("> /dev/null 2>&1")
+        os.system(" ".join(cmd))
+
+    def depcheck(self):
+        """
+        Runs depcheck to do dependency checking on the repositories.
+        """
+        distname = self.config.get("repositories", "distname")
+        distvers = self.config.get("repositories", "alldistvers")
+        repos = self.config.get("repos", "repostobebug")
+
+        for repo in [distname + v + "-" + r for v in distvers for r in repos]:
+            os.system("depcheck {0} > /dev/null 2>&1".format(repo))
+
+    def repocheck(self):
+        """
+        Runs repocheck, which checks the sanity of the repository hierarchy.
+        """
+        cmd = ["repocheck"]
+        cmd.append("--config-file={0}".format(self.config_file))
+        if self.no_mail:
+            cmd.append("--no-mail")
+        if self.check_unstable:
+            cmd.append("--check-unstable")
+
+        # Check the sanity of the repositories for each version
+        for version in self.config.get("repositories", "alldistvers"):
+            os.system("{0} {1} > /dev/null 2>&1".format(" ".join(cmd), version))
+
+    def rpmdb_backup(self):
+        """
+        Runs the script to back up the RPM database used by rpm2python.
+        """
+        cmd = ["rpmdb_backup"]
+        cmd.append(self.config.get("rpmdb", "backupdir"))
+        cmd.append(self.config.get("rpmdb", "name"))
+        cmd.append(self.config.get("rpmdb", "user"))
+        cmd.append(self.config.get("rpmdb", "password"))
+        cmd.append(self.config.get("logs", "backupCount"))
+        cmd.append("> /dev/null 2>&1")
+        os.system(" ".join(cmd))
+
+
+if __name__ == "__main__":
+    # Set up command line options
+    parser = argparse.ArgumentParser(
+            prog="daily_checks",
+            description="daily_checks - Perform repository backups and checks",
+            epilog="Made by Rutgers Open System Solutions.")
+    parser.add_argument(
+            "--no-mail",
+            action="store_true",
+            help="Suppress sending mail after the check.")
+    parser.add_argument(
+            "-c",
+            "--config-file",
+            default="/etc/rutgers-repotools.cfg",
+            help="The configuration file to use.")
+    parser.add_argument(
+            "-v",
+            "--verbose",
+            action="store_true",
+            help="Use verbose output.")
+    parser.add_argument(
+            "-u",
+            "--check-unstable",
+            action="store_true",
+            help="Check the unstable repository. Off by default.")
+
+    # Now, actually do work
+    app = App(**parser.parse_args().__dict__)
+    try:
+        app.run()
+    except Exception as e:
+        sys.stderr.write("Error: {0}".format(e.message))
+        sys.exit(1)
