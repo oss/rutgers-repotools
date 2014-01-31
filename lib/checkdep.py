@@ -191,8 +191,6 @@ def generate_spam(pkgname, treename):
             for dep in brokendeps:
                 data = data + "\t%s\n" % printable_req(dep[0], dep[1])
 
-    data = data + "Please resolve this as soon as possible.\n\n"
-
     return data
 
 
