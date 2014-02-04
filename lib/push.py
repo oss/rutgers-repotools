@@ -181,16 +181,16 @@ def push_packages(app, kojisession, packages, to_repo, user, test):
         email_body.append("""
 The following packages have been pushed by {0} to {1} :
 
-{3}
-
+{2}
 The following packages were pulled from {1}:
 
-{4}
-
+{3}
 The repositories are regenerated and the packages are ready to use.
 
 Recent changes:
-{5}
+{4}
     """.format(user, to_repo, message, replaced, changelogs))
+        email_body = "\n".join(email_body)
+        email_body.strip()
 
         return [email_subject, email_body]

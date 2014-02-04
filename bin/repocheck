@@ -147,7 +147,7 @@ if __name__=="__main__":
         error = "Error: Repositories for {0} {1} must be regenerated.".format(
                 distname, version)
         show_error(distname, version, mailto, smtp_host, error)
-    elif not check_unstable and os.path.isdir(unstable_repo):
+    elif check_unstable and not os.path.isdir(unstable_repo):
         error = "Error: Unstable repo for {0} {1} must be regenerated.".format(
                 distname, version)
         show_error(distname, version, mailto, smtp_host, error)

@@ -287,18 +287,22 @@ def pullpackage(myapp, mail, test, force, distname, distver, from_repo,
                 packages, checkdep_from_repo=False):
     """ The actual puller."""
     from_repos = myapp.config.get("repositories", "allrepos").split()
+    full_repos = ["{0}{1}-{2}".format(distname, distver, x) for x in from_repos]
     user = myapp.username
-    kojisession = myapp.get_koji_session(ssl = True)
+    kojisession = myapp.get_koji_session(ssl=True)
     pkgstags = pull.check_packages(myapp, kojisession, packages, from_repo)
 
     # We only need to depcheck the from_repo if it does not inherit
     # from parent repos that the packages are tagged with
+    # This algorithm assumes that the repositories are placed in a standard
+    # order (most general to most specific). If we are pushing upwards, we must
+    # do dependency checking; otherwise we skip it
 
     from_indices = []
     for pkgtags in pkgstags:
         indices = []
         for tag in pkgtags:
-            indices.append(from_repos.index(tag))
+            indices.append(full_repos.index(tag))
         from_indices.append(min(indices))
 
     for index in from_indices:

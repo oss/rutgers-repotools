@@ -68,7 +68,7 @@ class App():
         Runs depcheck to do dependency checking on the repositories.
         """
         distname = self.config.get("repositories", "distname")
-        distvers = self.config.get("repositories", "alldistvers")
+        distvers = self.config.get("repositories", "alldistvers").split()
         repos = self.config.get("repos", "repostobebug")
 
         for repo in [distname + v + "-" + r for v in distvers for r in repos]:
@@ -86,7 +86,7 @@ class App():
             cmd.append("--check-unstable")
 
         # Check the sanity of the repositories for each version
-        for version in self.config.get("repositories", "alldistvers"):
+        for version in self.config.get("repositories", "alldistvers").split():
             os.system("{0} {1} > /dev/null 2>&1".format(" ".join(cmd), version))
 
     def rpmdb_backup(self):

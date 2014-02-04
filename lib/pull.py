@@ -51,9 +51,9 @@ def check_packages(app, kojisession, packages, to_repo):
                 # Contains no Koji tags
                 app.logger.error('Package {0} has no valid tags!'.format(package))
                 clean = False
-            if to_repo in pkgtags:
-                # Already exists in the target repository
-                app.logger.error('Package {0} already exists in {1}.'.format(package, to_repo))
+            if to_repo not in pkgtags:
+                # Doesn't exist in the target repository
+                app.logger.error('Package {0} does not exist in {1}.'.format(package, to_repo))
                 clean = False
         else:
             # Nothing found in Koji
