@@ -1,3 +1,7 @@
+2014-02-04 (0.7.3)
+    - Fixed a bug in pullpackage that halts at the runner
+    - Fixed a bug in the email report for a successfully pushed package
+    - Fixed bug in daily_checks with the unstable repository flag
 2014-01-31 (0.7.2)
     - More bug fixes, especially with the new config file sections
     - Fixed some typos
