@@ -196,7 +196,8 @@ def generate_spam(pkgname, treename):
 
 def filterout(app, baddeps):
     """ Filter out the bad dependencies specified in depcheck_ignore file """
-    di_file = open(app.config.get("repositories", "depcheck_ignorefile"), 'r')
+    depcheck_ignore = app.config.get("repositories", "depcheck_ignorefile")
+    di_file = open(depcheck_ignore, 'r')
     inputtext = di_file.readlines()
     di_file.close()
     ignorelist = []
@@ -206,10 +207,7 @@ def filterout(app, baddeps):
             if len(ignoreitem) == 3:
                 ignorelist.append(ignoreitem)
             else:
-                app.logger.warning("Could not parse " +
-                                  app.config.get("repositories",
-                                             "depcheck_ignorefile") +
-                                  ", line " + line + ":")
+                app.logger.warning("Could not parse {0}, line {1}".format(depcheck_ignore, line))
                 app.logger.warning("\t"+inputtext[line])
                 # Bad! We need to quit
                 return -1

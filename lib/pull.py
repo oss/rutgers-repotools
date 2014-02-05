@@ -26,8 +26,7 @@ def check_packages(app, kojisession, packages, to_repo):
     If they are, return the tags associated with them"""
     clean = True
 
-    # NOTE: This should be replaced by a more sophisticated check,
-    # and the common ground between push and pull should be pulled out
+    # NOTE: This should be replaced by a more sophisticated check
     for package in packages:
         if package.count("-") < 2 or package[0] == "-" or package[-1] == "-":
             app.logger.error("Error: Invalid NVR fromat: " + package)

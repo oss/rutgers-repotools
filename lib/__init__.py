@@ -283,17 +283,25 @@ def run_pullpackage(my_config_file='/etc/rutgers-repotools.cfg'):
     myapp.exit(0)
 
 
-def pullpackage(myapp, mail, test, force, distname, distver, from_repo,
-                packages, checkdep_from_repo=False):
+def pullpackage(myapp, mail, test, force, from_repo, packages, checkdep_from_repo=False):
     """ The actual puller."""
-    from_repos = myapp.config.get("repositories", "allrepos").split()
-    full_repos = ["{0}{1}-{2}".format(distname, distver, x) for x in from_repos]
+    # Data
     user = myapp.username
+    distver = myapp.distver
+    distname = myapp.config.get("repositories", "distname")
+    from_repos = myapp.config.get("repositories", "allrepos").split()
+
+    # Get the full names of the repositories
+    from_repo_full = "{0}{1}-{2}".format(distname, distver, from_repo)
+    full_repos = ["{0}{1}-{2}".format(distname, distver, x) for x in from_repos]
+
+    # Find all of the tags associated with the packages
     kojisession = myapp.get_koji_session(ssl=True)
-    pkgstags = pull.check_packages(myapp, kojisession, packages, from_repo)
+    pkgstags = pull.check_packages(myapp, kojisession, packages, from_repo_full)
 
     # We only need to depcheck the from_repo if it does not inherit
     # from parent repos that the packages are tagged with
+
     # This algorithm assumes that the repositories are placed in a standard
     # order (most general to most specific). If we are pushing upwards, we must
     # do dependency checking; otherwise we skip it
