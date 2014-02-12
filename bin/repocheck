@@ -24,7 +24,6 @@ def show_error(distname, distver, mailto, smtp_host, error, no_mail=False):
     sys.stderr.write(error)
     if not no_mail:
         send_mail(distname, distver, mailto, smtp_host, error)
-    sys.exit(1)
 
 
 def send_mail(distname, distver, mailto, smtp_host, message):
@@ -143,14 +142,17 @@ if __name__=="__main__":
         error = "Error: {0} is not a valid version of {1}.".format(version,
                                                                    distname)
         show_error(distname, version, mailto, smtp_host, error)
+        sys.exit(1)
     elif not os.path.isdir(stable_repo) or not os.path.isdir(testing_repo):
         error = "Error: Repositories for {0} {1} must be regenerated.".format(
                 distname, version)
         show_error(distname, version, mailto, smtp_host, error)
+        sys.exit(1)
     elif check_unstable and not os.path.isdir(unstable_repo):
         error = "Error: Unstable repo for {0} {1} must be regenerated.".format(
                 distname, version)
         show_error(distname, version, mailto, smtp_host, error)
+        sys.exit(1)
 
     # Check the stable and testing repositories
     output = []

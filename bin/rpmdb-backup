@@ -38,6 +38,7 @@ set -e
 
 # First, make the backup directories if they don't exist
 for ((i=0; i<$LAST_BACKUP; i++)); do
+    echo "Creating empty backup directory ${BACKUP_DIR}/backup.${LAST_BACKUP}"
     mkdir -p "$BACKUP_DIR/backup.$i"
 done
 
@@ -45,10 +46,12 @@ done
 rm -rf "$BACKUP_DIR/backup.$LAST_BACKUP"
 
 # Next, rotate the backup folders
+echo "Rotating backup directories..."
 for ((i=$LAST_BACKUP; i>=1; i--)); do
     mv "$BACKUP_DIR/backup.$(($i-1))" "$BACKUP_DIR/backup.$i"
 done
 
 # Finally, make the newest backup
+echo "Dumping database to disk..."
 mkdir -p "$BACKUP_DIR/backup.0/"
 mysqldump -u${DBUSER} -p${DBPASS} $DBNAME > "$BACKUP_DIR/backup.0/${DBNAME}.sql"

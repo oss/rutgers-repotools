@@ -60,7 +60,8 @@ class App():
         cmd = ["koji-backup"]
         cmd.append(self.config.get("koji", "pkgdir"))
         cmd.append(self.config.get("koji", "backupdir"))
-        cmd.append("> /dev/null 2>&1")
+        if not self.verbose:
+            cmd.append("> /dev/null 2>&1")
         os.system(" ".join(cmd))
 
     def depcheck(self):
@@ -70,9 +71,10 @@ class App():
         distname = self.config.get("repositories", "distname")
         distvers = self.config.get("repositories", "alldistvers").split()
         repos = self.config.get("repositories", "repostodebug")
+        redirect = "" if self.verbose else "> /dev/null 2>&1"
 
         for repo in [distname + v + "-" + r for v in distvers for r in repos]:
-            os.system("depcheck {0} > /dev/null 2>&1".format(repo))
+            os.system("depcheck {0} {1}".format(repo, redirect))
 
     def repocheck(self):
         """
@@ -84,10 +86,11 @@ class App():
             cmd.append("--no-mail")
         if self.check_unstable:
             cmd.append("--check-unstable")
+        redirect = "" if self.verbose else "> /dev/null 2>&1"
 
         # Check the sanity of the repositories for each version
         for version in self.config.get("repositories", "alldistvers").split():
-            os.system("{0} {1} > /dev/null 2>&1".format(" ".join(cmd), version))
+            os.system("{0} {1} {2}".format(" ".join(cmd), version, redirect))
 
     def rpmdb_backup(self):
         """
@@ -99,7 +102,8 @@ class App():
         cmd.append(self.config.get("rpmdb", "user"))
         cmd.append(self.config.get("rpmdb", "password"))
         cmd.append(self.config.get("logs", "backupCount"))
-        cmd.append("> /dev/null 2>&1")
+        if not self.verbose:
+            cmd.append("> /dev/null 2>&1")
         os.system(" ".join(cmd))
 
 

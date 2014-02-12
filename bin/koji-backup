@@ -20,9 +20,11 @@ fi
 set -e
 
 # Dump Koji DB to local disk
+echo "Dumping Koji database to disc..."
 sudo -u koji pg_dump -C koji > /tmp/koji_dbdump.sql
 
 # Sync the backup to our backup location
+echo "Syncing to backup location..."
 rsync --archive --sparse --delete "$1" "$2/packages"
 rsync --archive /tmp/koji_dbdump.sql "$2"
 rm -f /tmp/koji_dbdump

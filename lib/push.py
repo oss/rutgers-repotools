@@ -112,13 +112,13 @@ def push_packages(app, kojisession, packages, to_repo, user, test):
     # NOTE: This could use some cleanup in the future
     kojitmpsession = app.get_koji_session(ssl = False)
     kojisession.multicall = True
-
-    message = ""
-    packagelist = ""
+    message = []
+    packagelist = []
     changelogs = ""
 
     # get the packages that will be replaced by this push
     replaced_pkgs = get_replaced_packages(app,kojisession,packages,to_repo)
+
     # untag all the pkgs, they will be replaced
     for pkg in replaced_pkgs:
         kojisession.untagBuildBypass(to_repo, pkg)
@@ -126,9 +126,11 @@ def push_packages(app, kojisession, packages, to_repo, user, test):
     for package in packages:
         app.logger.info("Tagging " + package + " into " + to_repo)
         if not test:
+            # This does the actual Koji "pushing" if it's not a test
             kojisession.tagBuildBypass(to_repo, package)
-        message += "\t" + package + "\n"
-        packagelist += package+", "
+
+        message.append(package)
+        packagelist.append(package)
         changelogs += """
 %s
 %s """ % (package, "-"*len(package))
@@ -143,12 +145,10 @@ def push_packages(app, kojisession, packages, to_repo, user, test):
 %s
 """ % (tstamp, author, text)
 
-    # Truncate the trailing comma
-    packagelist = packagelist[:-2]
-
     # Get the results
     results = kojisession.multiCall()
 
+    # Look for errors
     clean = True
     errors = []
     for i in range(len(results)):
@@ -158,11 +158,13 @@ def push_packages(app, kojisession, packages, to_repo, user, test):
                 errors.append("Error: " + results[i]['faultString'])
                 clean = False
         except (KeyError, TypeError):
+            app.logger.debug("pushpackage triggered an error while looking for errors")
             pass
 
     # Prepare for the email
     distname = app.config.get("repositories", "distname_nice")
     distver = app.distver
+    packagelist = ", ".join(packagelist)
 
     if clean == False:
         email_subject = "{0} {1} - Push Failed - {2}".format(distname, distver, packagelist)
@@ -170,21 +172,23 @@ def push_packages(app, kojisession, packages, to_repo, user, test):
         sendspam.sendspam(app, email_subject, email_body, scriptname="pushpackage")
         app.exit(2)
     else:
-        replaced = '\t\n'.join(replaced_pkgs)
         email_subject = "{0} {1} - Push Successful - {2}".format(distname, distver, packagelist)
         email_body = []
 
+        message = '\t' + '\n\t'.join(message)
+        replaced = '\t' + '\n\t'.join(replaced_pkgs) if replaced_pkgs else "None!"
         if test:
             email_body.append("Test Results")
             email_body.append("(No packages have actually been pushed.)\n")
 
-        email_body.append("""
-The following packages have been pushed by {0} to {1} :
+        email_body.append("""The following packages have been pushed by {0} to {1} :
 
 {2}
+
 The following packages were pulled from {1}:
 
 {3}
+
 The repositories are regenerated and the packages are ready to use.
 
 Recent changes:

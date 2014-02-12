@@ -146,7 +146,8 @@ def run_depcheck(my_config_file='/etc/rutgers-repotools.cfg'):
     timerun = myapp.time_run()
     if results:
         if mail:
-            email_subject = myapp.config.get("repositories", "distname_nice") + " - Broken dependencies"
+            distname = myapp.config.get("repositories", "distname_nice")
+            email_subject = "{0} {1} - Broken Dependencies".format(distname, distver)
             problem = "The routine daily check has found dependency problems.\n"
             email_body = problem + results
             email_body = add_time_run(email_body, timerun)
@@ -154,7 +155,7 @@ def run_depcheck(my_config_file='/etc/rutgers-repotools.cfg'):
             sendspam.sendspam(myapp, email_subject, email_body, scriptname="depcheck")
         myapp.logger.error("There are broken dependencies.")
 
-    myapp.logger.info("\nSuccess! Time run: " + str(timerun) + " s")
+    myapp.logger.info("Time run: " + str(timerun) + " s")
     myapp.exit()
 
 
@@ -321,7 +322,7 @@ def pullpackage(myapp, mail, test, force, from_repo, packages, checkdep_from_rep
     if not force:
         if checkdep_from_repo:
             results = checkdep.doit(myapp, from_repo, packages, True)
-            depcheck_results(myapp, user, packages, results, mail)
+            depcheck_results(myapp, user, packages, results, mail, action="pull")
         else:
             myapp.logger.info("The specified packages are already inherited from a parent repo.")
             myapp.logger.info("No need to do dependency checking.")
@@ -687,21 +688,24 @@ def run_rebuild_repos(my_config_file='/etc/rutgers-repotools.cfg'):
     myapp.exit()
 
 
-def depcheck_results(myapp, user, packages, results, mail):
+def depcheck_results(myapp, user, packages, results, mail, action="push"):
     """ Emails the results of the dependency check if something is broken. """
     distver = myapp.distver
+    distname = myapp.config.get("repositories", "distname_nice")
     if not results in ["", "baddep"]:
-        guilt = "The push attempt of " + user
-        guilt += " with the following package(s) failed on " + myapp.config.get("repositories","distname_nice") + distver + ":\n"
+        guilt = "{0} attempted and failed to {1} the following packages to {2} {3}:".format(user,
+                                                                                            action,
+                                                                                            distname,
+                                                                                            distver)
         for package in packages:
-            guilt += package + "\n"
+            guilt += "\t" + package + "\n"
         timerun = myapp.time_run()
         if mail:
-            email_subject = myapp.config.get("repositories", "distname_nice") \
-                            + distver + " - Broken dependencies"
+            email_subject = "{0} {1} - Broken Dependencies".format(distname, distver)
             email_body = guilt + add_time_run(results, timerun)
             myapp.logger.warning("Sending email...")
-            sendspam.sendspam(myapp, email_subject, email_body, scriptname="depcheck")
+            script = "{0}package".format(action)
+            sendspam.sendspam(myapp, email_subject, email_body, scriptname=script)
         myapp.logger.error(guilt)
         myapp.logger.error("There are broken dependencies. We stop here.")
         myapp.logger.info("\nTime run: " + str(timerun) + " s")
