@@ -1,3 +1,10 @@
+2014-02-14 (0.7.5)
+    - Better output from the backup scripts and the repocheck script
+    - Fixed some more bugs in daily_checks
+    - Formatted pull email output to match push
+    - No more verifying the user during a depcheck
+    - Caught some strange issue in rcommon when the application would exit
+      before the logger was initialized
 2014-02-12 (0.7.4)
     - Fixed lots of email quirks in the reports (still messy though)
     - Verbose flag actually works for daily_checks

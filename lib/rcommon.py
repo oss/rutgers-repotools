@@ -138,7 +138,11 @@ class AppHandler:
 
     def exit(self, status=0):
         """ Exit from application gracefully """
-        self.logger.debug("Beginning exit and cleanup.")
+        if self.logger:
+            self.logger.debug("Beginning exit and cleanup.")
+        else:
+            print "Warning: Exiting, but logger has not been initialized."
+
         if self._lockfilename:
             AppHandler.remove_lock(self._lockfilename)
 

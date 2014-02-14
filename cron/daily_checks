@@ -70,7 +70,7 @@ class App():
         """
         distname = self.config.get("repositories", "distname")
         distvers = self.config.get("repositories", "alldistvers").split()
-        repos = self.config.get("repositories", "repostodebug")
+        repos = self.config.get("repositories", "repostodebug").split()
         redirect = "" if self.verbose else "> /dev/null 2>&1"
 
         for repo in [distname + v + "-" + r for v in distvers for r in repos]:
@@ -96,7 +96,7 @@ class App():
         """
         Runs the script to back up the RPM database used by rpm2python.
         """
-        cmd = ["rpmdb_backup"]
+        cmd = ["rpmdb-backup"]
         cmd.append(self.config.get("rpmdb", "backupdir"))
         cmd.append(self.config.get("rpmdb", "name"))
         cmd.append(self.config.get("rpmdb", "user"))

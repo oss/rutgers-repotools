@@ -158,7 +158,7 @@ def push_packages(app, kojisession, packages, to_repo, user, test):
                 errors.append("Error: " + results[i]['faultString'])
                 clean = False
         except (KeyError, TypeError):
-            app.logger.debug("pushpackage triggered an error while looking for errors")
+            app.logger.debug("pushpackage triggered an error while looking for errors.")
             pass
 
     # Prepare for the email
@@ -176,7 +176,7 @@ def push_packages(app, kojisession, packages, to_repo, user, test):
         email_body = []
 
         message = '\t' + '\n\t'.join(message)
-        replaced = '\t' + '\n\t'.join(replaced_pkgs) if replaced_pkgs else "None!"
+        replaced = '\t' + '\n\t'.join(replaced_pkgs) if replaced_pkgs else "\tNone!"
         if test:
             email_body.append("Test Results")
             email_body.append("(No packages have actually been pushed.)\n")

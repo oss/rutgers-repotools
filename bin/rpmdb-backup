@@ -37,9 +37,12 @@ LAST_BACKUP=$(($5-1))
 set -e
 
 # First, make the backup directories if they don't exist
+echo "Beginning rpm database backup."
 for ((i=0; i<$LAST_BACKUP; i++)); do
-    echo "Creating empty backup directory ${BACKUP_DIR}/backup.${LAST_BACKUP}"
-    mkdir -p "$BACKUP_DIR/backup.$i"
+    if [ ! -d ${BACKUP_DIR}/backup.$i ]; then
+        echo "Creating empty backup directory ${BACKUP_DIR}/backup.$i"
+        mkdir -p "$BACKUP_DIR/backup.$i"
+    fi
 done
 
 # Remove the oldest backup
@@ -55,3 +58,4 @@ done
 echo "Dumping database to disk..."
 mkdir -p "$BACKUP_DIR/backup.0/"
 mysqldump -u${DBUSER} -p${DBPASS} $DBNAME > "$BACKUP_DIR/backup.0/${DBNAME}.sql"
+echo "Backup complete!"

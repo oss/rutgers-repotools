@@ -85,41 +85,49 @@ def pull_packages(app, kojisession, packages, from_repo, user):
     """ Untag from the repos. Return a message with the results
     to be emailed """
     kojisession.multicall = True
+    message = []
+    packagelist = []
 
-    message = ""
-    packagelist = ""
     # Remove the from_repo tags from the package
     for package in packages:
         app.logger.info("Untagging "+ package + " from " + from_repo)
         kojisession.untagBuildBypass(from_repo, package)
-        message += package+"\n"
-        packagelist += package+", "
-
-    # Truncate the trailing comma
-    packagelist = packagelist[:-2]
+        message.append(package)
+        packagelist.append(package)
 
     # Get the results
     results = kojisession.multiCall()
 
+    # Look for errors
     clean = True
+    errors = []
     for i in range(len(results)):
         try:
             if results[i]['faultString']:
                 app.logger.error("Error: " + results[i]['faultString'])
+                errors.append("Error: " + results[i]['faultString'])
                 clean = False
         except (KeyError, TypeError):
+            app.logger.debug("pullpackage triggered an error while looking for errors.")
             pass
+
+    # Finally, prepare for the email
+    distname = app.config.get("repositories", "distname_nice")
+    distver = app.distver
+    packagelist = ", ".join(packagelist)
+
     if clean == False:
+        email_subject = "{0} {1} - Pull Failed - {2}".format(distname, distver, packagelist)
+        email_body = "\n".join(errors)
+        sendspam.sendspam(app, email_subject, email_body, scriptname="pullpackage")
         app.exit(2)
+    else:
+        message = '\t' + '\n\t'.join(message)
+        email_subject = "{0} {1} - Pull Successful - {2}".format(distname, distver, packagelist)
+        email_body = []
+        email_body.append("""The following packages have been pulled by {0} from {1}:
 
-    distname_nice = app.config.get("repositories", "distname_nice")
-    email_subject = distname_nice + " - Pull Successful: " + packagelist
-    email_body = """
-The following packages have been pulled by %s from %s :
+{2}
 
-%s
-
-The repositories are regenerated and the packages are ready to use.
-
-""" % (user, from_repo, message)
+The repositories are regenerated and the packages are ready to use.""")
     return [email_subject, email_body]

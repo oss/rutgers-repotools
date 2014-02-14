@@ -84,7 +84,7 @@ Time run: %s seconds
 def run_depcheck(my_config_file='/etc/rutgers-repotools.cfg'):
     """ Runs the actual script """
     os.umask(002)
-    myapp = rcommon.AppHandler(verifyuser=True,config_file=my_config_file)
+    myapp = rcommon.AppHandler(verifyuser=False,config_file=my_config_file)
 
     versions = myapp.config.get("repositories", "alldistvers").split()
     distname = myapp.config.get("repositories", "distname")

@@ -28,3 +28,4 @@ echo "Syncing to backup location..."
 rsync --archive --sparse --delete "$1" "$2/packages"
 rsync --archive /tmp/koji_dbdump.sql "$2"
 rm -f /tmp/koji_dbdump
+echo "Backup complete!"
