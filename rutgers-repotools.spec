@@ -61,7 +61,7 @@ EOF
 
 %files
 %defattr(-,root,root,-)
-%doc CHANGELOG LICENSE README
+%doc CHANGELOG LICENSE README.md
 %{_bindir}/depcheck
 %{_bindir}/koji-backup
 %{_bindir}/movepackage

@@ -1,3 +1,6 @@
+2014-02-19 (0.7.6)
+    - Fixed the pull email message
+    - Removed extraneous spaces when adding the time run
 2014-02-14 (0.7.5)
     - Better output from the backup scripts and the repocheck script
     - Fixed some more bugs in daily_checks
