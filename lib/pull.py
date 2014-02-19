@@ -129,5 +129,9 @@ def pull_packages(app, kojisession, packages, from_repo, user):
 
 {2}
 
-The repositories are regenerated and the packages are ready to use.""")
-    return [email_subject, email_body]
+The repositories are regenerated and the packages are ready to use.
+    """.format(user, from_repo, message))
+        email_body = "\n".join(email_body)
+        email_body.strip()
+
+        return [email_subject, email_body]

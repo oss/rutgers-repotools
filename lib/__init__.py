@@ -73,11 +73,7 @@ def parse_distrepo(distrepo):
 def add_time_run(body, timerun):
     """ Adds a line to include time run on the email to be sent """
     timerun = str(timerun)
-    body += """
-
-Time run: %s seconds
-
-""" % (timerun)
+    body += "\n\nTime run: {0} seconds\n".format(timerun)
     return body
 
 
