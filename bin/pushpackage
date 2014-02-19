@@ -1,26 +1,48 @@
 #!/usr/bin/python
-""" Wrapper script to publish packages. """
-###############################################################################
-#Programmer: Orcan Ogetbil    orcan@nbcs.rutgers.edu                          #
-#Date: 08/12/2010                                                             #
-#Filename: pushpackage                                                        #
-#                                                                             #
-#                                                                             #
-#       Copyright 2010 Orcan Ogetbil                                          #
-#                                                                             #
-#    This program is free software; you can redistribute it and/or modify     #
-#    it under the terms of the GNU General Public License as published by     #
-#    the Free Software Foundation; either version 2 of the License, or        #
-#    (at your option) any later version.                                      #
-#                                                                             #
-#    This program is distributed in the hope that it will be useful,          #
-#    but WITHOUT ANY WARRANTY; without even the implied warranty of           #
-#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the            #
-#    GNU General Public License for more details.                             #
-#                                                                             #
-###############################################################################
+"""
+A package publishing script. This takes a package and does dependency checking
+to see if the addition of the new package would cause dependency errors. If
+there are none, this adds the entry into the Rutgers repository database.
+"""
 
-import RUtools
+import argparse
+import repotools
 
 if __name__ == '__main__':
-    RUtools.run_pushpackage()
+    os.umask(002)
+
+    # Set up command line options
+    parser = argparse.ArgumentParser(
+            prog='pushpackage',
+            description='Publishes packages to Rutgers repositories.',
+            epilog='Made with love by Open System Solutions.')
+    parser.add_argument(
+            'repository',
+            help='A repository formatted as <distro><version>-<reponame>')
+    parser.add_argument(
+            '-f',
+            '--force',
+            action='store_true',
+            help='Do not do dependency checking.')
+    parser.add_argument(
+            '-t',
+            '--test',
+            action='store_true',
+            help='Do dependency checking and exit without an actual push.')
+    parser.add_argument(
+            '-v',
+            '--verbose',
+            action='store_true',
+            help='Use verbose output.')
+    parser.add_argument(
+            '-c',
+            '--config_file',
+            action='store',
+            default='/etc/rutgers-repotools.cfg',
+            help='Specify config file. Defaults to /etc/rutgers-repotools.cfg.')
+
+    # Parse the command-line arguments
+    options = parser.parse_args()
+
+    # Do some initialization
+    myapp = repotools.AppHandler(verifyuser=True, config_file=config_file)

@@ -27,8 +27,8 @@ setup(name         = 'rutgers-repotools',
         which checks for broken dependencies in the Rutgers tree and sends email
         to report problems.
       """,
-      packages     = ['RUtools'],
-      package_dir  = {'RUtools': 'lib'},
+      packages     = ['repotools'],
+      package_dir  = {'repotools': 'lib'},
       data_files   = [('/etc', ['conf/depcheck.ignore.sample', 'conf/rutgers-repotools.cfg.sample']),
                       ('/etc/cron.daily', ['cron/daily_checks'])],
       scripts      = ['bin/depcheck',
