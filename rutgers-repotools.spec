@@ -13,7 +13,7 @@ BuildArch: noarch
 
 Requires:  centos-release
 Requires:  koji
-Requires:  mysql-python
+Requires:  MySQL-python
 Requires:  python
 Requires:  repoutils
 Requires:  yum-utils
