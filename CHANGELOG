@@ -1,3 +1,6 @@
+2014-02-21 (0.7.7)
+    - Removed the hack by using rutgers-repoutils
+    - Hopefully local testing in virtualenv is imminent
 2014-02-19 (0.7.6)
     - Fixed the pull email message
     - Removed extraneous spaces when adding the time run
