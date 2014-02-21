@@ -2,7 +2,7 @@
 
 Summary:   Dependency checking and publish scripts
 Name:      rutgers-repotools
-Version:   0.7.5
+Version:   0.7.7
 Release:   1%{?dist}
 License:   GPLv2+
 Group:     System Environment/Base
@@ -12,11 +12,11 @@ BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root
 BuildArch: noarch
 
 Requires:  centos-release
-Requires:  createrepo
 Requires:  koji
-Requires:  yum-utils
 Requires:  mysql-python
 Requires:  python
+Requires:  repoutils
+Requires:  yum-utils
 BuildRequires: python
 
 %description

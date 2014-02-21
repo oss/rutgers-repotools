@@ -24,7 +24,8 @@ import errno
 import shutil
 import string
 import tempfile
-import createrepo
+
+from repoutils import genpkgmetadata
 
 def mkdir_p(path):
     """ Creates recursive directories """
@@ -158,9 +159,9 @@ def create_debug_repo(app, kojisession, repos_tmpdir):
 
     for archdir in archs:
         if fresh:
-            createrepo.main([repo_tmpdir + "/" + archdir])
+            genpkgmetadata.main([repo_tmpdir + "/" + archdir])
         else:
-            createrepo.main(["--update", repo_tmpdir + "/" + archdir])
+            genpkgmetadata.main(["--update", repo_tmpdir + "/" + archdir])
 
 
 
@@ -245,9 +246,9 @@ def create_repo(app, kojisession, repo, repos_tmpdir):
 
     for archdir in archs + ["SRPMS"]:
         if fresh:
-            createrepo.main([repo_tmpdir + "/" + archdir])
+            genpkgmetadata.main([repo_tmpdir + "/" + archdir])
         else:
-            createrepo.main(["--update", repo_tmpdir + "/" + archdir])
+            genpkgmetadata.main(["--update", repo_tmpdir + "/" + archdir])
 
 
 def get_publishrepos(app):

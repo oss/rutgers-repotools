@@ -31,16 +31,8 @@ import re
 from yum.constants import LETTERFLAGS
 from yum.misc import getCacheDir
 
-# HAAACK
-import imp
-sys.modules['repoclosure'] = imp.load_source("repoclosure",
-                                             "/usr/bin/repoclosure")
-import repoclosure
-sys.path.append('/usr/share/createrepo/')
-sys.modules['createrepo'] = imp.load_source("createrepo",
-                                            "/usr/share/createrepo/genpkgmetadata.py")
-import createrepo
-
+from repoutils import repoclosure
+from repoutils import genpkgmetadata
 
 DEPS = {}
 
@@ -325,7 +317,7 @@ def create_tmp_repo(app, packages, arch, removalfromrepo = ""):
             os.symlink(item[0] + "/" + item[1], tempdir + "/" + item[1])
 
         app.logger.info("Writing metadata")
-        createrepo.main(["--update", tempdir])
+        genpkgmetadata.main(["--update", tempdir])
 
     else:
         app.logger.info("Populating temporary repo " + tempdir +
@@ -360,7 +352,7 @@ def create_tmp_repo(app, packages, arch, removalfromrepo = ""):
                 except IOError, ex:
                     app.logger.debug(str(type(ex))+str(ex))
         app.logger.info("Writing metadata")
-        createrepo.main([tempdir])
+        genpkgmetadata.main([tempdir])
     return tempdir
 
 def doit(app, repotype, packages = [], removal = False):
