@@ -8,6 +8,20 @@ there are none, this adds the entry into the Rutgers repository database.
 import argparse
 import repotools
 
+from repotools import AppHandler
+
+class Pusher(AppHandler):
+    """
+    Does pushing to repositories.
+    """
+    def __init__(self, config_file=None, force=False, test=False,
+                 verbose=False):
+        """
+        Handles the initialization.
+        """
+        AppHandler.__init__(self)
+
+
 if __name__ == '__main__':
     os.umask(002)
 
@@ -18,7 +32,8 @@ if __name__ == '__main__':
             epilog='Made with love by Open System Solutions.')
     parser.add_argument(
             'repository',
-            help='A repository formatted as <distro><version>-<reponame>')
+            help='A repository formatted as <distro><version>-<reponame>',
+            nargs='+')
     parser.add_argument(
             '-f',
             '--force',
@@ -42,7 +57,12 @@ if __name__ == '__main__':
             help='Specify config file. Defaults to /etc/rutgers-repotools.cfg.')
 
     # Parse the command-line arguments
-    options = parser.parse_args()
-
-    # Do some initialization
-    myapp = repotools.AppHandler(verifyuser=True, config_file=config_file)
+    try:
+        pusher = Pusher(parser.parse_args().__dict__())
+        pusher.push()
+    except UserError as e:
+        pass
+    except DependencyError as e:
+        pass
+    except ConfigurationError as e:
+        pass

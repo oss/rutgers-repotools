@@ -13,16 +13,42 @@ import rlogger
 import sys
 import time
 
+class UserError(Exception):
+    """
+    Errors caused by the user doing something invalid.
+    """
+    pass
+
+
+class DependencyError(Exception):
+    """
+    Occurs when a broken dependency is detected.
+    """
+    pass
+
+
+class ConfigurationError(Exception):
+    """
+    Occurs if the configuration file is malformed or invalid.
+    """
+    pass
+
+
 class AppHandler:
     """
     An application helper class.
     """
     def __init__(self, verifyuser=True, config_file='/etc/rutgers-repotools.cfg'):
-        self.config = None
-        self.load_config(config_file)
+        """
+        Initializes loggers, reads the config file and begins timing.
+        """
+        # Read the config file
+        self.config = ConfigParser.ConfigParser()
+        self.config.read(config_file)
+
+        # Examine this user's credentials
         self.username = getpass.getuser()
         self.groupowner = self.config.get("repositories", "groupowner")
-        self.distname = self.config.get("repositories", "distname")
         if verifyuser:
             self.verify_user()
 
@@ -46,7 +72,7 @@ class AppHandler:
         rlogger.init(self._logfile, the_suspect, self.config, level, quiet)
         self.logger = logging.getLogger(the_suspect)
 
-    def get_koji_session(self, ssl = False):
+    def get_koji_session(self, ssl=False):
         """ Get a koji session with or without SSL access"""
         if self._kojisession_with_ssl and ssl:
             return self._kojisession_with_ssl
@@ -64,18 +90,12 @@ class AppHandler:
     def verify_user(self):
         """ See if we want to run our application for this user """
         if self.username == "root":
-            print "Error: Please do not run this script as root."
-            sys.exit(1)
+            raise UserException("User should not be root.")
 
         members = grp.getgrnam(self.groupowner)[3]
         if not self.username in members:
-            print "Error: The user who runs this script must belong to the group: " + self.groupowner
-            sys.exit(1)
-
-    def load_config(self, config_file):
-        """ Load configuration from file """
-        self.config = ConfigParser.ConfigParser()
-        self.config.read(config_file)
+            raise UserException(
+                    "User is not a member of group {}.".format(self.groupowner))
 
     def time_run(self):
         """ Calculate time run """
@@ -84,8 +104,8 @@ class AppHandler:
     def check_lock(self):
         """ Stop if there is a lock file for this application """
         if self._lockfilename is None:
-            print "No lockfile specified in the configuration for the application."
-            sys.exit(1)
+            raise ConfigurationError("No lock file specified in configuration.")
+
         lockers = self.config.options('locks')
         for locker in lockers:
             lockfilename = self.config.get('locks', locker)
@@ -93,8 +113,7 @@ class AppHandler:
                 if not AppHandler.is_running(lockfilename):
                     AppHandler.remove_lock(lockfilename)
                 else:
-                    print "Process is currently running. Please wait for it to finish."
-                    sys.exit(1)
+                    raise UserError("Another process is already running.")
 
     def create_lock(self):
         """ Create a lock file for this application """
@@ -153,3 +172,35 @@ class AppHandler:
             if os.stat(self._logfile)[5] != gid:
                 os.chown(self._logfile, -1, gid)
         sys.exit(status)
+
+
+def parse_distrepo(distrepo):
+    """
+    Parses a distribution/repository name into its constituent parts.
+
+    Takes a full distribution and repository name like 'centos6-rutgers-staging'
+    and splits it up into the appropriate parts.  If the name is badly
+    formatted, this method returns (None, None, None) - that is, None for all
+    parts. Otherwise, it returns a tuple containing (distname, distversion,
+    repository).
+    
+    For simplicity's sake, this assumes that the distribution version is a
+    simple number after the distrepo name; this can be changed for
+    future versions."""
+    # NOTE: if this becomes more complicated, feel free to replace the
+    # loop with a proper regular expression.
+    if distrepo is None:
+        return None, None, None
+
+    index1 = distrepo.find("-")
+    if index1 == -1:
+        return None, None, None
+
+    # Find the distribution version
+    for i in range(0, index1):
+        if distrepo[i].isdigit():
+            index2 = i
+            return (distrepo[:index2], distrepo[index2:index1],
+                    distrepo[index1+1:])
+    else:
+        return None, None, None
