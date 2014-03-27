@@ -34,6 +34,15 @@ class ConfigurationError(Exception):
     pass
 
 
+class RepositoryError(Exception):
+    """
+    Occurs when a package is not in Koji, or when an operation on a package with
+    a repository is invalid.
+    """
+    pass
+
+# TODO something for mail
+
 class AppHandler:
     """
     An application helper class.
@@ -64,6 +73,26 @@ class AppHandler:
         self.logger = None
         self._logfile = None
         self._kojisession_with_ssl = None
+        
+    def verify_repositories(self, repositories):
+        """
+        Verifies repositories for valididty based on the configuration file.
+        """
+        versions = self.config.get("repositories", "alldistvers").split()
+        distname = self.config.get("repositories", "distname")
+        allrepositories = get_publishrepos(self)
+
+        for repository in repositories:
+            distro, distver, repo = parse_distrepo(repository)
+            if distro is None or distver is None or repo is None:
+                raise UserError("Badly formatted repository name.")
+            if distro != distname:
+                raise UserError(distro + " is not a valid distribution name.")
+            if not distver in versions:
+                raise UserError("{}{} is not a valid version.".format(distro,
+                                                                      distver))
+            if not repo in allrepositories:
+                raise UserError(repo + " is not valid.")
 
     def init_logger(self, level=logging.INFO, quiet=False):
         """ Initialize loggers """

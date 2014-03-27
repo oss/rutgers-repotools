@@ -15,11 +15,178 @@ class Pusher(AppHandler):
     Does pushing to repositories.
     """
     def __init__(self, config_file=None, force=False, test=False,
-                 verbose=False):
+                 verbose=False, repository, packages):
         """
         Handles the initialization.
         """
         AppHandler.__init__(self)
+
+        # Koji
+
+        # Load the config file
+
+        # Load all required information up-front
+        distname = self.config.get("repositories", "distname")
+        all_distvers = self.config.get("repositories", "alldistvers").split()
+        debug_repos = self.config.get("repositories", "repostodebug").split()
+        invalid_repos = self.config.get("repositories",
+                                        "dontpublishrepos").split()
+        valid_repos = [r for r in self.config.get("repositories", "allrepos")
+                         if r not in invalid_repos]
+
+    def depcheck(self):
+        """
+        Does dependency checking.
+        """
+        pass
+
+    def get_replaced_packages(self, packages):
+        """
+        Finds packages in the target repository that will be replaced by the
+        pushed packages.
+        """
+        # Set multicall to false for now so we can get results
+        self.kojisession.multicall = False
+
+        replaced_pkgs = []
+        for pkg in packages:
+            pkg = pkg.split("-")
+            # last two fields are release and version, everything else must be name
+            pkg_name = "-".join(pkg[:-2])
+            # grab list of lists of packages (all builds for a given package)
+            results = self.kojisession.getLatestRPMS(to_repo, pkg_name)
+            for res in results:
+                for build in res:
+                    if 'nvr' in build and 'tag_info' in build and
+                        build['tag_info'] == to_repo:
+                            replaced_pkgs.append(build['nvr'])
+                            break
+
+        # finally, set multicall back to true
+        kojisession.multicall = True
+        return replaced_pkgs
+
+    def get_tags(self, packages):
+        """
+        Obtains the tags associated with packages in Koji.
+        """
+        # TODO change the flow of control and reduce raised exceptions?
+        for package in packages:
+            # Extremely naive check
+            if package.count("-") < 2 or package[0] == "-" or package[-1] == "-":
+                raise UserError("Invalid NVR format for {}".format(package))
+
+        allpkgtags = []
+        for package in packages:
+            # Get the build information from Koji
+            buildinfo = self.kojisession.getBuild(package)
+            pkgtags = []
+            if buildinfo:
+                # Find all tags associated with this package
+                tags = self.kojisession.listTags(package)
+                for tag in tags:
+                    pkgtags.append(tag["name"])
+
+                if not pkgtags:
+                    # Contains no Koji tags
+                    raise RepositoryError("Package {} has no valid Koji tags.")
+                if to_repo in pkgtags:
+                    # Already exists in the target repository
+                    raise RepositoryError("{} already exists in {}.".format(
+                        package, to_repo))
+            else:
+                # Nothing found in Koji
+                raise RepositoryError("{} does not exist in Koji.".format(
+                                        package))
+            allpkgtags.append(pkgtags)
+        return allpkgtags
+
+    def has_debuginfo(self, packages):
+        """
+        Returns true if the given packages have an associated debuginfo package;
+        false otherwise.
+        """
+        kojitempsession = self.get_koji_session(ssl=False)
+
+        for package in packages:
+            build = kojitempsession.getBuild(package)
+            rpmlist = kojitempsession.listRPMs(build["id"])
+            for irpm in rpmlist:
+                if irpm["name"].find("-debuginfo") != -1:
+                    self.logger.info("Debuginfo packages found.")
+                    return True
+
+        self.logger.info("No debuginfo packages found.")
+        return False
+
+    def push(self):
+        """
+        Does the main pushing.
+        """
+        if self.force:
+            self.logger.info("Force push - skipping dependency checking.")
+        elif not require_depcheck():
+            self.logger.info("Dependency checking is not needed.")
+        else:
+            self.logger.info("Beginning dependency check.")
+            depcheck()
+            # TODO
+
+        # Use a temporary koji session
+        kojitempsession = self.get_koji_session(ssl=False)
+        kojisession.multicall = True
+        nessage = []
+        packagelist = []
+        changelogs = ""
+
+        # Get the packages replaced by this push
+        # TODO fix signature
+        replaced_packages = self.get_replaced_packages(...)
+
+
+    def require_depcheck(self):
+        """
+        Determines whether or not dependency checking is needed.
+
+        This relies on the fact that the publish repositories in the
+        configuration file are listed in descending hierarchal order. It plays
+        with the indices, so pushing a package downwards in the hierarchy
+        (theoretically) does not require dependency checking.
+        """
+        # TODO Import this or move it
+        # TODO should be self.gettags
+        pkgstags = push.check_packages(myapp, kojisession, packages, to_repo)
+
+        to_indices = []
+        for pkgtags in pkgstags:
+            indices = []
+            for tag in pkgtags:
+                try:
+                    indices.append(to_repos.index(tag))
+                except ValueError:
+                    # May be in the staging repo
+                    indices.append(99)
+
+            to_indices.append(min(indices))
+
+        for index in to_indices:
+            if to_repos.index(to_repo) < index:
+                return True
+        return False
+
+    def run(self):
+        """
+        Wrapper around depcheck and push that times the main operation.
+        """
+        localtime = time.asctime(time.localtime(time.time()))
+        self.logger.info("Push started on: {}".format(localtime))
+
+        if self.test:
+            # Dependency checking only
+            depcheck()
+        else:
+            # Run the full push
+            push()
 
 
 if __name__ == '__main__':
@@ -32,7 +199,10 @@ if __name__ == '__main__':
             epilog='Made with love by Open System Solutions.')
     parser.add_argument(
             'repository',
-            help='A repository formatted as <distro><version>-<reponame>',
+            help='A repository formatted as <distro><version>-<reponame>')
+    parser.add_argument(
+            'packages',
+            help='Space-separated packages in NVR format.',
             nargs='+')
     parser.add_argument(
             '-f',
@@ -59,10 +229,13 @@ if __name__ == '__main__':
     # Parse the command-line arguments
     try:
         pusher = Pusher(parser.parse_args().__dict__())
-        pusher.push()
-    except UserError as e:
-        pass
-    except DependencyError as e:
-        pass
+        pusher.create_lock()
+        pusher.run()
     except ConfigurationError as e:
-        pass
+        raise
+    except DependencyError as e:
+        raise
+    except RepositoryError as e:
+        raise
+    except UserError as e:
+        raise
