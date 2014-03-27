@@ -21,16 +21,15 @@ class Pusher(AppHandler):
         """
         AppHandler.__init__(self)
 
-        # Koji
-
-        # Load the config file
-
         # Load all required information up-front
-        distname = self.config.get("repositories", "distname")
-        all_distvers = self.config.get("repositories", "alldistvers").split()
-        debug_repos = self.config.get("repositories", "repostodebug").split()
-        invalid_repos = self.config.get("repositories",
-                                        "dontpublishrepos").split()
+        self.distro, self.distver, self.target_repo = parse_distrepo(repository)
+        self.distname = self.config.get("repositories", "distname")
+        self.all_distvers = self.config.get("repositories",
+                                            "alldistvers").split()
+        self.debug_repos = self.config.get("repositories",
+                                           "repostodebug").split()
+        self.invalid_repos = self.config.get("repositories",
+                                             "dontpublishrepos").split()
         valid_repos = [r for r in self.config.get("repositories", "allrepos")
                          if r not in invalid_repos]
 
@@ -116,7 +115,7 @@ class Pusher(AppHandler):
                     self.logger.info("Debuginfo packages found.")
                     return True
 
-        self.logger.info("No debuginfo packages found.")
+        self.logger.info("No debuginfo packages found for {}.".format(packages))
         return False
 
     def push(self):
@@ -135,13 +134,50 @@ class Pusher(AppHandler):
         # Use a temporary koji session
         kojitempsession = self.get_koji_session(ssl=False)
         kojisession.multicall = True
-        nessage = []
+        message = []
         packagelist = []
-        changelogs = ""
+        changelogs = []
 
         # Get the packages replaced by this push
         # TODO fix signature
         replaced_packages = self.get_replaced_packages(...)
+
+        # Untag the replaced packages
+        for pkg in replaced_packages:
+            kojisession.untagBuildBypass(self.target_repo, pkg)
+
+        # Tag the new packages into the target repository
+        for pkg in packages:
+            app.logger.info("Tagging {} into {}".format(pkg, self.target_repo))
+            if not self.test:
+                kojisession.tagBuildBypass(self.target_repo, package)
+
+            # Build the email message
+            message.append(package)
+            packagelist.append(package)
+
+            # Add up to three lines of change log
+            changelogs.append("\n{}\n{} ".format(package, "-"*len(package)))
+            chlog = kojitempsession.getChangelogEntries(package)
+            for entry in range(min(len(chlog), 3)):
+                timestamp = datetime.date.fromtimestamp(chlog[entry]["date_ts"])
+                changelogs.append("\n{} {}\n{}\n".format(
+                    timestamp.strftime("%a %b %d %Y"),
+                    chlog[entry]["author"],
+                    chlog[entry]["text"]))
+
+        # Get the results from Koji
+        results = kojisession.multiCall()
+
+        # Look for errors
+        clean = True
+        errors = []
+        for result in results:
+            if result["faultString"]:
+                app.logger.error()
+                clean = False
+
+
 
 
     def require_depcheck(self):
