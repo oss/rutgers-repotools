@@ -56,9 +56,9 @@ class Pusher(AppHandler):
             results = self.kojisession.getLatestRPMS(to_repo, pkg_name)
             for res in results:
                 for build in res:
-                    if 'nvr' in build and 'tag_info' in build and
-                        build['tag_info'] == to_repo:
-                            replaced_pkgs.append(build['nvr'])
+                    if "nvr" in build and "tag_info" in build and
+                        build["tag_info"] == to_repo:
+                            replaced_pkgs.append(build["nvr"])
                             break
 
         # finally, set multicall back to true
@@ -225,42 +225,42 @@ class Pusher(AppHandler):
             push()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     os.umask(002)
 
     # Set up command line options
     parser = argparse.ArgumentParser(
-            prog='pushpackage',
-            description='Publishes packages to Rutgers repositories.',
-            epilog='Made with love by Open System Solutions.')
+            prog="pushpackage",
+            description="Publishes packages to Rutgers repositories.",
+            epilog="Made with love by Open System Solutions.")
     parser.add_argument(
-            'repository',
-            help='A repository formatted as <distro><version>-<reponame>')
+            "repository",
+            help="A repository formatted as <distro><version>-<reponame>")
     parser.add_argument(
-            'packages',
-            help='Space-separated packages in NVR format.',
-            nargs='+')
+            "packages",
+            help="Space-separated packages in NVR format.",
+            nargs="+")
     parser.add_argument(
-            '-f',
-            '--force',
-            action='store_true',
-            help='Do not do dependency checking.')
+            "-f",
+            "--force",
+            action="store_true",
+            help="Do not do dependency checking.")
     parser.add_argument(
-            '-t',
-            '--test',
-            action='store_true',
-            help='Do dependency checking and exit without an actual push.')
+            "-t",
+            "--test",
+            action="store_true",
+            help="Do dependency checking and exit without an actual push.")
     parser.add_argument(
-            '-v',
-            '--verbose',
-            action='store_true',
-            help='Use verbose output.')
+            "-v",
+            "--verbose",
+            action="store_true",
+            help="Use verbose output.")
     parser.add_argument(
-            '-c',
-            '--config_file',
-            action='store',
-            default='/etc/rutgers-repotools.cfg',
-            help='Specify config file. Defaults to /etc/rutgers-repotools.cfg.')
+            "-c",
+            "--config_file",
+            action="store",
+            default="/etc/rutgers-repotools.cfg",
+            help="Specify config file. Defaults to /etc/rutgers-repotools.cfg.")
 
     # Parse the command-line arguments
     try:

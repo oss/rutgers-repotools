@@ -1,28 +1,408 @@
 #!/usr/bin/python
-""" Checks the stability of a rutgers repo. 
-    Also used by the daily depcheck cron job. """
+"""
+A repository dependency-checking script. It's a re-bastardized version of
+spam-o-matic from mash by Fedora.
 
-###############################################################################
-#Programmer: Orcan Ogetbil    orcan@nbcs.rutgers.edu                          #
-#Date: 08/12/2010                                                             #
-#Filename: checkrepo                                                          #
-#                                                                             #
-#                                                                             #
-#       Copyright 2010 Orcan Ogetbil                                          #
-#                                                                             #
-#    This program is free software; you can redistribute it and/or modify     #
-#    it under the terms of the GNU General Public License as published by     #
-#    the Free Software Foundation; either version 2 of the License, or        #
-#    (at your option) any later version.                                      #
-#                                                                             #
-#    This program is distributed in the hope that it will be useful,          #
-#    but WITHOUT ANY WARRANTY; without even the implied warranty of           #
-#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the            #
-#    GNU General Public License for more details.                             #
-#                                                                             #
-###############################################################################
+This script is used by repository-modifying scripts when pushing and pulling; it
+can also be run by itself to do a check on the repositories.
+"""
 
-import RUtools
+import argparse
+import os
+import re
+import repotools
+import shutil
+import string
+import sys
+import tempfile
+from repotools import AppHandler
 
-if __name__ == '__main__':
-    RUtools.run_depcheck()
+
+class DepChecker(AppHandler):
+    """
+    Does dependency checking on repositories.
+    """
+    def __init__(self, config_file=None, no_mail=False, quiet=False,
+                 verbose=False, repository):
+        """
+        Handles the initialization.
+        """
+        AppHandler.__init__(self)
+
+        # Loggers
+        self.init_logger(self.verbose, self.quiet)
+
+        # Load all required information up-front
+        self.distro, self.distver, self.target_repo = parse_distrepo(repository)
+        self.distname        = self.config.get("repositories", "distname")
+        self.distname_nice   = self.config.get("repositories", "distname_nice")
+        self.all_distvers    = self.config.get("repositories",
+                                               "alldistvers").split()
+        self.repodir_public  = self.config.get("repositories",
+                                               "repodir_public")
+        self.repodir_private = self.config.get("repositories",
+                                               "repodir_private")
+        self.distroverpkg    = self.config.get("repositories",
+                                               "distroverpkg")
+
+        # Validation
+        try:
+            self.verify_repositories()
+            self.validate_user()
+        except UserError as e:
+            self.logger.error(e.message)
+            raise
+
+    def create_temprepo(self, packages, arch, removefromrepo=""):
+        """
+        Creates a temporary repository with the specified packages and
+        architecture.
+        """
+        kojisession = self.get_koji_session(ssl=False)
+        tempprefix = "tmprepo-{}-".format(arch)
+        tempdir = tempfile.mkdtemp(prefix=tempprefix)
+        arches = [arch, "noarch"]
+
+        if removefromrepo:
+            # This functions like: cp source/* dir/
+            os.rmdir(tempdir)
+            repodir = "{}{}/{}/{}".format(
+                    self.config.get("repositories", "repodir_private"),
+                    removefromrepo,
+                    self.distver,
+                    arch)
+            app.logger.info("Populating temporary repository {}".format(
+                tempdir))
+            app.logger.info("with candidate packages removed from {}".format(
+                removefromrepo))
+            app.logger("Copying the original repository to temp directory")
+            shutil.copytree(repodir, tempdir, symlinks=True)
+
+            removal_list = []
+            add_list = []
+            for package in packages:
+                buildinfo = kojisession.getBuild(package)
+                bid = buildinfo["id"]
+                for rpm in kojisession.listRPMs(bid):
+                    if "-debuginfo" not in rpm["name"] and rpm["arch"] in arches:
+                       removal_list.append("{}.{}.rpm".format(
+                           rpm["nvr"], rpm["arch"]))
+
+                next_largest_build_id = -1
+                next_largest_build = None
+                tagname = "{}{}-{}".format(self.distname, self.distver,
+                                           removalfromrepo)
+                allbuilds = kojisession.listTagged(tagname,
+                                                   package=buildinfo["name"])
+                for build in allbuilds:
+                    if build["build_id"] > next_largest_build_id
+                       and build["build_id"] != buildinfo["id"]:
+                           next_largest_build_id = build["build_id"]
+                           next_largest_build = build
+                addlst = [] if next_largest_build_id == -1
+                            else kojisession.listRPMs(next_largest_build_id)
+                for rpm in addlst:
+                    if "-debuginfo" not in rpm["name"] and rpm["arch"] in arches:
+                        packagedir = "/".join([
+                                self.config.get("koji", "pkgdir"),
+                                next_largest_build["name"],
+                                next_largest_build["version"],
+                                next_largest_build["release"],
+                                rpm["arch"]])
+                        add_list.append([packagedir,
+                                         "{}.{}.rpm".format(rpm["nvr"],
+                                                            rpm["arch"])])
+
+            self.logger.info("Removing subject packages from temp repository")
+            for item in removal_list:
+                app.logger.info("Removing {}".format(item))
+                os.remove("{}/{}".format(tempdir, item))
+
+            self.logger.info("Adding next most recent builds to the temporary")
+            self.logger.info("repository, if any exist")
+            if not add_list:
+                self.logger.info("No other builds for this package.")
+            else:
+                for item in add_list:
+                    app.logger.info("Adding {}".format(item[1]))
+                    os.symlink("/".join(item), "{}/{}".format(tempdir, item[1]))
+
+            self.logger.info("Writing metadata")
+            repoutils.genpkgmetadata.main(["--update", tempdir])
+        else:
+            self.logger.info("Populating temp repository {}".format(tempdir))
+            self.logger.info("with candidate packages.")
+            for package in packages:
+                buildinfo = kojisession.getBuild(package)
+                packagedir = "/".join([self.config.get("koji", "pkgdir"),
+                                       buildinfo["name"],
+                                       buildinfo["version"],
+                                       buildinfo["release"]])
+                # First, copy architecture-specific RPMs
+                # TODO: The arch thing looks strange when building noarch
+                # TODO: Use os.pathsep
+                try:
+                    rpmfiles = os.listdir("{}/{}".format(packagedir, arch))
+                    for rpmfile in rpmfiles:
+                        if 
+
+    def filter_dependencies(self, bad_deps):
+        """
+        Filters out bad dependencies in the ignore file.
+        """
+        fname = self.config.get("repositories", "depcheck_ignorefile")
+        with open(fname, "r") as depcheck_ignore:
+            inputtext = depcheck_ignore.readlines()
+                
+        ignorelist = []
+        for linenumber, line in inputtext.enumerate():
+            line = line.trim()
+            if line[0] == "#" or line == "\n":
+                # Comment or empty line
+                pass
+            else:
+                ignoreitem = line.split()
+                if len(ignoreitem) == 3:
+                    ignorelist.append(ignoreitem)
+                else:
+                    # Badly formatted file
+                    self.logger.warning("Could not parse {}, line {}:".format(
+                        fname, linenumber+1))
+                    self.logger.warning("\t" + line)
+                    return -1
+
+        packages = bad_deps.keys()
+        for pkg in packages:
+            for (name, depflag, version) in bad_deps[pkg]:
+                if filter_rules(ignorelist, pkg.name, name, depflag, version):
+                    bad_deps.pop(pkg)
+                    break
+        return bad_deps
+
+    @staticfunction
+    def filter_rules(ignorelist, name, requires, compare, version):
+        """
+        Checks if the broken dependency matches anything in the ignore list.
+        """
+        # TODO: The comparison flags has yet to be implemented
+        for ignoreitem in ignorelist:
+            itemname, itemrequires, itemversion = ignoreitem
+            if "*" in itemname:
+                name_regex = re.compile(sanitize_regex(itemname))
+                if name_regex.match(name):
+                    itemname = name
+            if "*" in itemrequires:
+                requires_regex = re.compile(sanitize_regex(itemrequires))
+                if requires_regex.match(requires):
+                    itemrequires = requires
+            # If version is not given, it is a None object
+            if itemversion is None:
+                itemversion = version
+            elif "*" in itemversion:
+                version_regex = re.compile(sanitize_regex(itemversion))
+                if version_regex.match(version):
+                    itemversion = version
+            if (name, requires, version) ==
+                    (itemname, itemrequires, itemversion):
+                return True
+        else:
+            return False
+
+    def generate_config(self, disttype, arch, tmprepodir="", removal=False):
+        """
+        Generates a fake Yum configuration file.
+        """
+        (fdesc, conffile) = tempfile.mkstemp()
+        confheader = """
+[main]
+debuglevel=2
+logfile=/var/log/yum.log
+pkgpolicy=newest
+distroverpkg={0}
+reposdir=/dev/null
+cachedir=/var/tmp/yum
+keepcache=0
+
+[base]
+name={1} - Base
+baseurl=file://{2}/{3}/os/{4}/
+
+[update]
+name={1} - Updates
+baseurl=file://{2}/{3}/updates/{4}/
+
+#[addons]
+#name={1} - Addons
+#baseurl=file://{2}/{3}/addons/{4}/
+
+[extras]
+name={1} - Extras
+baseurl=file://{2}/{3}/extras/{4}/""".format(self.distroverpkg,
+                                             self.distname_nice,
+                                             self.repodir_public,
+                                             self.distver,
+                                             arch)
+
+        # In order to check the sanity of upstream repositories:
+        if disttype != "upstream":
+            for repo in self.get_valid_repos():
+                if removal and repo == disttype:
+                    break
+                confheader += """
+[{0}]
+name={1} {0} Tree
+baseurl=file://{2}/{0}/{3}/{4}/
+""".format(repo, self.distname_nice, self.repodir_private, self.distver, arch)
+                if not removal and repo == disttype:
+                    break
+
+        if tmprepodir != "":
+            confheader += """
+[candidates]
+name=New packages
+baseurl=file://{}
+""".format(tmprepodir)
+
+        self.logger.info("Yum config file generated for dependency checking:")
+        self.logger.debug("-"*79)
+        self.logger.debug(confheader)
+        self.logger.debug("-"*79)
+        os.write(fdesc, confheader)
+        os.close(fdesc)
+        return conffile
+
+    @staticfunction
+    def get_dependencies(resolver, dependency):
+        """
+        Given a dependency, this returns packages responsible for it.
+        """
+        def _addpkgs(sack, deplist):
+            """
+            Adds source packages providing a requirement to the sack.
+            """
+            for package in sack.returnPackages():
+                providing_pkg = get_src_pkg(package)
+                deplist.append(providing_pkg)
+
+        deplist = []
+        
+        # First, the original dependency
+        deplist.append(dep)
+
+        # Then, all packages that provide it
+        _addpkgs(resolver.whatProvides(dependency, None, None))
+
+        # For libraries, check for variant names
+        if re.match("lib.*\.so\.[0-9]+", dep):
+            new = re.sub("(lib.*\.so\.)([0-9])+", libmunge, dep)
+            __addpackages(resolver.whatProvides(new, None, None))
+            libname = dep.split('.')[0]
+            __addpackages(resolver.whatProvides(libname, None, None))
+
+        return deplist
+
+    @staticfunction
+    def get_printable_req(package, dependency):
+        """
+        Returns a human-readable dependency string.
+        """
+        name, depflag, version = dependency
+        requires = [name]
+        if depflag:
+            flag = yum.constants.LETTERFLAGS[depflag]
+            requires.append(flag)
+        if version:
+            requires.append(version)
+        return "{} requires {}".format(package, requires.join(" "))
+
+    @staticfunction
+    def get_src_package(package)
+    """
+    Given a package, returns the name of its SRPM, or None if none could be
+    found.
+    """
+    if package.arch == "src":
+        return package.name
+    srpm = package.returnSimple("sourcerpm")
+    if not srpm:
+        return None
+    else:
+        return srpm.split("-")[:-2].join("-")
+
+    def get_valid_repos(self):
+        """
+        Returns a list of valid repositories that can be targeted.
+        """
+        repositories = AppHandler.get_valid_repos(self)
+        repositories.append("upstream")
+        return repositories
+
+    @staticfunction
+    def libmunge(match):
+        """
+        Munges sonames.
+        """
+        if match.groups()[1].isdigit():
+            return "{}{}".format(match.groups()[0], int(match.groups()[1])+1)
+        else:
+            return "{}{}".format(match.groups()[0], match.groups()[1])
+
+    @staticfunction
+    def sanitize_regex(expression):
+        """
+        Converts a string to a proper regular expression.
+        """
+        regex = string.replace(expression, ".", "\.")
+        regex.replace("*", ".*")
+        regex.replace("+", "\+")
+        regex.replace("(", "\(")
+        regex.replace(")", "\)")
+        return regex
+
+
+if __name__ == "__main__":
+    os.umask(002)
+
+    # Set up command line options
+    parser = argparse.ArgumentParser(
+            prog="depcheck",
+            description="Does dependency checking on Rutgers repositories.",
+            epilog="Made with love by Open System Solutions.")
+    parser.add_argument(
+            "repository",
+            help="A repository formatted as <distro><version>-<reponame>")
+    parser.add_argument(
+            "-c",
+            "--config-file",
+            action="store",
+            default="/etc/rutgers-repotools.cfg",
+            help="Specify config file. Defaults to /etc/rutgers-repotools.cfg.")
+    parser.add_argument(
+            "--no-mail",
+            action="store_true",
+            help="Do not send an email notification.")
+    parser.add_argument(
+            "-q",
+            "--quiet",
+            action="store_true",
+            help="Suppress output. Takes precedence over --verbose.")
+    parser.add_argument(
+            "-v",
+            "--verbose",
+            action="store_true",
+            help="Use verbose output.")
+
+    # Parse the command-line arguments
+    try:
+        checker = DepChecker(parser.parse_args().__dict__())
+        checker.create_lock()
+        checker.run()
+    except repotools.ConfigurationError as e:
+        raise
+    except repotools.DependencyError as e:
+        raise
+    except repotools.RepositoryError as e:
+        raise
+    except repotools.UserError as e:
+        raise
+

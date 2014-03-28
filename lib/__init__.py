@@ -41,7 +41,6 @@ class RepositoryError(Exception):
     """
     pass
 
-# TODO something for mail
 
 class AppHandler:
     """
@@ -77,32 +76,41 @@ class AppHandler:
     def verify_repositories(self, repositories):
         """
         Verifies repositories for valididty based on the configuration file.
+
+        This function also checks if the specified repositories are contained in
+        get_valid_repos(). Override that function for individual scripts to
+        change which repositories are valid.
         """
         versions = self.config.get("repositories", "alldistvers").split()
         distname = self.config.get("repositories", "distname")
-        allrepositories = get_publishrepos(self)
 
         for repository in repositories:
             distro, distver, repo = parse_distrepo(repository)
             if distro is None or distver is None or repo is None:
                 raise UserError("Badly formatted repository name.")
             if distro != distname:
-                raise UserError(distro + " is not a valid distribution name.")
+                raise UserError(
+                        "{} is not a valid distribution name.".format(distro))
             if not distver in versions:
-                raise UserError("{}{} is not a valid version.".format(distro,
-                                                                      distver))
-            if not repo in allrepositories:
-                raise UserError(repo + " is not valid.")
+                raise UserError(
+                        "{}{} is not a valid version.".format(distro, distver))
+            if not repo in self.get_valid_repos():
+                raise UserError(
+                        "{} is not a valid target repository.".format(repo))
 
     def init_logger(self, level=logging.INFO, quiet=False):
-        """ Initialize loggers """
+        """
+        Initializes the loggers.
+        """
         self._logfile = self.config.get("logs", self._callername)
-        the_suspect = self.config.get("report","user")+"-" + self.username
-        rlogger.init(self._logfile, the_suspect, self.config, level, quiet)
-        self.logger = logging.getLogger(the_suspect)
+        user = "{}-{}".format(self.config.get("report", "user"), self.username)
+        rlogger.init(self._logfile, user, self.config, level, quiet)
+        self.logger = logging.getLogger(user)
 
     def get_koji_session(self, ssl=False):
-        """ Get a koji session with or without SSL access"""
+        """
+        Get an appropriate Koji session, with or without SSL access.
+        """
         if self._kojisession_with_ssl and ssl:
             return self._kojisession_with_ssl
 
@@ -116,8 +124,24 @@ class AppHandler:
             self._kojisession_with_ssl = kojisession
         return kojisession
 
+    def get_valid_repos(self):
+        """
+        Returns a list of valid repositories that can be targeted.
+
+        Override this function in derived classes to change which repositories
+        are valid targets for a script. By default, this returns all
+        repositories that are not excluded in the configuration file. See the
+        "publishrepos" and "dontpublishrepos" fields under the repositories
+        section.
+        """
+        all = self.config.get("repositories", "allrepos").split()
+        excluded = self.config.get("repositories", "dontpublishrepos").split()
+        return [repo for repo in all if repo not in excluded]
+
     def verify_user(self):
-        """ See if we want to run our application for this user """
+        """
+        Determine whether or not the user is allowed to execute this script.
+        """
         if self.username == "root":
             raise UserException("User should not be root.")
 
