@@ -66,9 +66,10 @@ class DepChecker(AppHandler):
         if removefromrepo:
             # This functions like: cp source/* dir/
             os.rmdir(tempdir)
-            repodir = "{}{}/{}/{}".format(
+            repodir = "{0}{1}{2}{3}{2}{}".format(
                     self.config.get("repositories", "repodir_private"),
                     removefromrepo,
+                    os.sep,
                     self.distver,
                     arch)
             app.logger.info("Populating temporary repository {}".format(
@@ -103,7 +104,7 @@ class DepChecker(AppHandler):
                             else kojisession.listRPMs(next_largest_build_id)
                 for rpm in addlst:
                     if "-debuginfo" not in rpm["name"] and rpm["arch"] in arches:
-                        packagedir = "/".join([
+                        packagedir = os.sep.join([
                                 self.config.get("koji", "pkgdir"),
                                 next_largest_build["name"],
                                 next_largest_build["version"],
@@ -116,7 +117,7 @@ class DepChecker(AppHandler):
             self.logger.info("Removing subject packages from temp repository")
             for item in removal_list:
                 app.logger.info("Removing {}".format(item))
-                os.remove("{}/{}".format(tempdir, item))
+                os.remove(os.sep.join([tempdir, item]))
 
             self.logger.info("Adding next most recent builds to the temporary")
             self.logger.info("repository, if any exist")
@@ -125,26 +126,52 @@ class DepChecker(AppHandler):
             else:
                 for item in add_list:
                     app.logger.info("Adding {}".format(item[1]))
-                    os.symlink("/".join(item), "{}/{}".format(tempdir, item[1]))
+                    os.symlink(os.sep.join(item),
+                               os.sep.join([tempdir, item[1]]))
 
             self.logger.info("Writing metadata")
             repoutils.genpkgmetadata.main(["--update", tempdir])
         else:
-            self.logger.info("Populating temp repository {}".format(tempdir))
-            self.logger.info("with candidate packages.")
+            self.logger.info(
+                "Populating temp repository {} with candidate packages.".format(
+                    tempdir))
             for package in packages:
                 buildinfo = kojisession.getBuild(package)
-                packagedir = "/".join([self.config.get("koji", "pkgdir"),
-                                       buildinfo["name"],
-                                       buildinfo["version"],
-                                       buildinfo["release"]])
+                packagedir = os.sep.join([self.config.get("koji", "pkgdir"),
+                                          buildinfo["name"],
+                                          buildinfo["version"],
+                                          buildinfo["release"]])
                 # First, copy architecture-specific RPMs
-                # TODO: The arch thing looks strange when building noarch
-                # TODO: Use os.pathsep
-                try:
-                    rpmfiles = os.listdir("{}/{}".format(packagedir, arch))
-                    for rpmfile in rpmfiles:
-                        if 
+                archdir = os.sep.join([packagedir, arch])
+                if os.path.isdir(archdir):
+                    rpmfiles = os.listdir(archdir)
+                    for file in rpmfiles:
+                        if file.endswith(".rpm") and not "debuginfo" in file:
+                            self.logger.info("Adding: " + file))
+                            os.symlink(os.sep.join([packagedir, arch, file]),
+                                       os.sep.join([tempdir, rpmfile]))
+                else:
+                    self.logger.debug(
+                        "Source package {} does not produce {} RPMS".format(
+                            package, arch))
+
+                # Next, RPMs designated as `noarch`
+                archdir = os.sep.join([packagedir, "noarch"])
+                if os.path.isdir(os.sep.join(archdir)):
+                    try:
+                        rpmfiles = os.listdir(archdir)
+                        for file in rpmfiles:
+                            if file.endswith(".rpm"):
+                                self.logger.info("Adding: " + file)
+                                os.symlink(os.sep.join([archdir, file]),
+                                           os.sep.join([tempdir, file]))
+                    except IOError as ex:
+                        # Print the exception on the debug logs
+                        self.logger.debug(str(type(ex)) + ex.message)
+
+            self.logger.info("Writing metadatax:")
+            repoutils.genpkgmetadata.main([tempdir])
+        return tempdir
 
     def filter_dependencies(self, bad_deps):
         """
