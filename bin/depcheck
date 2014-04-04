@@ -11,10 +11,12 @@ import argparse
 import os
 import re
 import repotools
+import repoutils
 import shutil
 import string
 import sys
 import tempfile
+import yum
 from repotools import AppHandler
 
 
@@ -22,15 +24,16 @@ class DepChecker(AppHandler):
     """
     Does dependency checking on repositories.
     """
-    def __init__(self, config_file=None, no_mail=False, quiet=False,
-                 verbose=False, repository):
+    def __init__(self, repository, config_file=None, no_mail=False, quiet=False,
+                 verbose=False):
         """
         Handles the initialization.
         """
         AppHandler.__init__(self)
+        self.dependencies = {}
 
         # Loggers
-        self.init_logger(self.verbose, self.quiet)
+        self.init_logger(verbose, quiet)
 
         # Load all required information up-front
         self.distro, self.distver, self.target_repo = parse_distrepo(repository)
@@ -66,7 +69,7 @@ class DepChecker(AppHandler):
         if removefromrepo:
             # This functions like: cp source/* dir/
             os.rmdir(tempdir)
-            repodir = "{0}{1}{2}{3}{2}{}".format(
+            repodir = "{0}{1}{2}{3}{2}{4}".format(
                     self.config.get("repositories", "repodir_private"),
                     removefromrepo,
                     os.sep,
@@ -196,7 +199,8 @@ class DepChecker(AppHandler):
                     self.logger.warning("Could not parse {}, line {}:".format(
                         fname, linenumber+1))
                     self.logger.warning("\t" + line)
-                    return -1
+                    raise repotools.ConfigurationError(
+                            "Badly formatted depcheck.ignore file.")
 
         packages = bad_deps.keys()
         for pkg in packages:
@@ -374,6 +378,94 @@ baseurl=file://{}
         else:
             return "{}{}".format(match.groups()[0], match.groups()[1])
 
+    def run(self, repotype, remove=False):
+        """
+        Performs the actual dependency checking.
+
+        This returns the list of packages causing dependency errors. If no
+        dependency errors are found, this returns an empty list. It also writes
+        to the application logger while executing.
+        """
+        arches = self.config.get("repositories", "archs").split()
+        for arch in arches:
+            self.logger.info("Checking architecture: " + arch)
+            if not packages:
+                temprepodir = ""
+            elif remove:
+                temprepodir = self.create_temprepo(packages, arch, repotype)
+            else:
+                temprepodir = self.create_temprepo(packages, arch)
+
+            # Generate the fake Yum configuration
+            conffile = self.generate_config(repotype, arch, temprepodir, remove)
+            if not conffile:
+                continue
+
+            # Detect architecture
+            if arch == "i386":
+                carch = "i686"
+            elif arch == "ppc":
+                carch = "ppc64"
+            elif arch = "sparc":
+                carch = "sparc64v"
+            else:
+                carch = arch
+
+            # Obtain dependency information from repoclosure
+            self.logger.info("Calculating dependency chains.")
+            myrc = repotools.repoclosure.RepoClosure(config=conffile,
+                                                     arch=[carch])
+            myrc.repos.setCacheDir(yum.misc.getCacheDir(reuse=False))
+            self.logger.info("Processing metadata returned from repoclosure.")
+            myrc.readMetadata()
+
+            # Check the dependencies
+            self.logger.info("Calculating dependencies.")
+            bad_deps = myrc.getBrokenDeps(newest=True)
+            try:
+                bad_deps = self.filter_dependencies(bad_deps)
+            except repotools.ConfigurationError as e:
+                self.logger.error(e.message)
+                raise
+            packages = sorted(bad_deps.keys(),
+                              key=lambda x: x.returnSimple("name"))
+            if packages:
+                self.logger.warning("Broken dependencies found for " + arch)
+            else:
+                self.logger.info("No broken dependencies.")
+            
+            # Find which packages are broken, if any
+            for package in packages:
+                src = get_src_package(package)
+                if not self.dependencies.has_key(src):
+                    self.dependencies[src] = {}
+
+                packageid = "{}-{}".format(package.name, package.printVer())
+                if not self.dependencies.has_key(packageid):
+                    self.dependencies[src][packageid] = {}
+
+                broken = []
+                for dependency in bad_deps[package]:
+                    name = dependency[0]
+                    self.logger.warning("\t" + 
+                            get_printable_req(package, dependency))
+                    dependencies = get_dependencies(myrc, name)
+                    broken.append((package, dependency, dependencies))
+                    self.dependencies[src][packageid][arch] = broken
+
+            # Clean up
+            os.unlink(conffile)
+            if temprepodir:
+                self.logger.info("Cleaning up temporary repository directory" +
+                        temprepodir)
+                shutil.rmtree(temprepodir, ignore_errors=True)
+            if cachedir:
+                self.logger.info("Cleaning up the cache directory " + cachedir)
+                shutil.rmtree(cachedir, ignore_errors=True)
+            self.logger.info("Dependency checking complete for " + arch)
+        # TODO check this
+        return packages
+
     @staticfunction
     def sanitize_regex(expression):
         """
@@ -386,8 +478,64 @@ baseurl=file://{}
         regex.replace(")", "\)")
         return regex
 
+    def generate_report(self, packagelist, treename):
+        """
+        Given a list of packages causing dependency errors, generates a report.
+        """
+        if not packagelist:
+            return "There are no broken dependencies in {}.".format(treename)
+
+        report = []
+        report.append("\n\n{} has broken dependencies in the {} tree:".format(
+                packagename, treename)
+        for key in package.keys():
+            subpackage = package[key]
+            for arch in subpackage.keys():
+                report.append("On {}:".format(arch))
+                for dependency in subpackage[arch]:
+                    # TODO
+                    report.append("\t" + get_printable_req(dep[0], dep[1]))
+        return "\n".join(report)
+
+
+def has_dependencies(repository, config=None):
+    """
+    Runs the dependency checking from an external script.
+
+    This does the dependency checking and runs silently. If there are dependency
+    errors, this returns a human-readable report. Otherwise, it returns the
+    empty string.
+
+    Exceptional behavior includes a badly-formatted configuration file, an
+    invalid input and a malformed repository name. If an exception is raised,
+    it must be handled in the calling function.
+
+    Suggested usage:
+
+        dependencies = depcheck.has_dependencies(options)
+        if dependencies:
+            print "Errors detected."
+            send_mail(dependencies)
+        else:
+            print "No dependency errors."
+    """
+    checker = DepChecker(repository, config_file=config, no_mail=True,
+                         quiet=True, verbose=False)
+    checker.create_lock()
+    checker.run()
+        
+
 
 if __name__ == "__main__":
+    """
+    Run the dependency checking from the command line.
+
+    When this script exits, the return code will be as follows:
+        - 0 if no dependency issues were detected;
+        - 1 if a dependency error was found;
+        - 2 for errors regarding a configuration file
+        - 3 for a bad input or user error
+    """
     os.umask(002)
 
     # Set up command line options
@@ -412,7 +560,7 @@ if __name__ == "__main__":
             "-q",
             "--quiet",
             action="store_true",
-            help="Suppress output. Takes precedence over --verbose.")
+            help="Suppress output.")
     parser.add_argument(
             "-v",
             "--verbose",
@@ -423,13 +571,17 @@ if __name__ == "__main__":
     try:
         checker = DepChecker(parser.parse_args().__dict__())
         checker.create_lock()
-        checker.run()
+        problems = checker.run()
+        if not problems:
+            print "No dependency issues."
+        else:
+            print checker.generate_report(problems, checker.target_repo)
+
     except repotools.ConfigurationError as e:
-        raise
+        sys.stderr.write(e.message)
     except repotools.DependencyError as e:
         raise
     except repotools.RepositoryError as e:
         raise
     except repotools.UserError as e:
         raise
-
