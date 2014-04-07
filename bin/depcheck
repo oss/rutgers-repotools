@@ -20,12 +20,72 @@ import yum
 from repotools import AppHandler
 
 
+def get_printable_req(package, dependency):
+    """
+    Returns a human-readable dependency string.
+    """
+    name, depflag, version = dependency
+    requires = [name]
+    if depflag:
+        flag = yum.constants.LETTERFLAGS[depflag]
+        requires.append(flag)
+    if version:
+        requires.append(version)
+    return "{} requires {}".format(package, requires.join(" "))
+
+
+def get_src_package(package):
+    """
+    Given a package, returns the name of its SRPM, or None if none could be
+    found.
+    """
+    if package.arch == "src":
+        return package.name
+    srpm = package.returnSimple("sourcerpm")
+    if not srpm:
+        return None
+    else:
+        return srpm.split("-")[:-2].join("-")
+
+
+def get_valid_target_repos(apphandler=None, config_file=None):
+    """
+    Gets the valid target repositories.
+    """
+    if apphandler:
+        distname = apphandler.config.get("repositories", "distname")
+        distvers = apphandler.config.get("repositories", "alldistvers").split()
+        repositories = AppHandler.get_valid_repos(apphandler)
+
+
+def libmunge(match):
+    """
+    Munges sonames.
+    """
+    if match.groups()[1].isdigit():
+        return "{}{}".format(match.groups()[0], int(match.groups()[1])+1)
+    else:
+        return "{}{}".format(match.groups()[0], match.groups()[1])
+
+
+def sanitize_regex(expression):
+    """
+    Converts a string to a proper regular expression.
+    """
+    regex = string.replace(expression, ".", "\.")
+    regex.replace("*", ".*")
+    regex.replace("+", "\+")
+    regex.replace("(", "\(")
+    regex.replace(")", "\)")
+    return regex
+
+
 class DepChecker(AppHandler):
     """
     Does dependency checking on repositories.
     """
-    def __init__(self, repository, config_file=None, no_mail=False, quiet=False,
-                 verbose=False):
+    def __init__(self, repository, config_file=None, no_mail=False,
+                 packages=None, quiet=False, verbose=False):
         """
         Handles the initialization.
         """
@@ -36,7 +96,9 @@ class DepChecker(AppHandler):
         self.init_logger(verbose, quiet)
 
         # Load all required information up-front
-        self.distro, self.distver, self.target_repo = parse_distrepo(repository)
+        self.packages = [] if not packages else packages
+        self.distro, self.distver, self.target_repo = \
+            repotools.parse_distrepo(repository)
         self.distname        = self.config.get("repositories", "distname")
         self.distname_nice   = self.config.get("repositories", "distname_nice")
         self.all_distvers    = self.config.get("repositories",
@@ -52,7 +114,7 @@ class DepChecker(AppHandler):
         try:
             self.verify_repositories()
             self.validate_user()
-        except UserError as e:
+        except repotools.UserError as e:
             self.logger.error(e.message)
             raise
 
@@ -75,11 +137,11 @@ class DepChecker(AppHandler):
                     os.sep,
                     self.distver,
                     arch)
-            app.logger.info("Populating temporary repository {}".format(
+            self.logger.info("Populating temporary repository {}".format(
                 tempdir))
-            app.logger.info("with candidate packages removed from {}".format(
+            self.logger.info("with candidate packages removed from {}".format(
                 removefromrepo))
-            app.logger("Copying the original repository to temp directory")
+            self.logger("Copying the original repository to temp directory")
             shutil.copytree(repodir, tempdir, symlinks=True)
 
             removal_list = []
@@ -95,15 +157,15 @@ class DepChecker(AppHandler):
                 next_largest_build_id = -1
                 next_largest_build = None
                 tagname = "{}{}-{}".format(self.distname, self.distver,
-                                           removalfromrepo)
+                                           removefromrepo)
                 allbuilds = kojisession.listTagged(tagname,
                                                    package=buildinfo["name"])
                 for build in allbuilds:
-                    if build["build_id"] > next_largest_build_id
+                    if build["build_id"] > next_largest_build_id \
                        and build["build_id"] != buildinfo["id"]:
                            next_largest_build_id = build["build_id"]
                            next_largest_build = build
-                addlst = [] if next_largest_build_id == -1
+                addlst = [] if next_largest_build_id == -1 \
                             else kojisession.listRPMs(next_largest_build_id)
                 for rpm in addlst:
                     if "-debuginfo" not in rpm["name"] and rpm["arch"] in arches:
@@ -119,7 +181,7 @@ class DepChecker(AppHandler):
 
             self.logger.info("Removing subject packages from temp repository")
             for item in removal_list:
-                app.logger.info("Removing {}".format(item))
+                self.logger.info("Removing " + item)
                 os.remove(os.sep.join([tempdir, item]))
 
             self.logger.info("Adding next most recent builds to the temporary")
@@ -128,7 +190,7 @@ class DepChecker(AppHandler):
                 self.logger.info("No other builds for this package.")
             else:
                 for item in add_list:
-                    app.logger.info("Adding {}".format(item[1]))
+                    self.logger.info("Adding " + item[1])
                     os.symlink(os.sep.join(item),
                                os.sep.join([tempdir, item[1]]))
 
@@ -150,9 +212,9 @@ class DepChecker(AppHandler):
                     rpmfiles = os.listdir(archdir)
                     for file in rpmfiles:
                         if file.endswith(".rpm") and not "debuginfo" in file:
-                            self.logger.info("Adding: " + file))
+                            self.logger.info("Adding: " + file)
                             os.symlink(os.sep.join([packagedir, arch, file]),
-                                       os.sep.join([tempdir, rpmfile]))
+                                       os.sep.join([tempdir, file]))
                 else:
                     self.logger.debug(
                         "Source package {} does not produce {} RPMS".format(
@@ -205,12 +267,12 @@ class DepChecker(AppHandler):
         packages = bad_deps.keys()
         for pkg in packages:
             for (name, depflag, version) in bad_deps[pkg]:
-                if filter_rules(ignorelist, pkg.name, name, depflag, version):
+                if DepChecker.filter_rules(ignorelist, pkg.name, name, depflag, version):
                     bad_deps.pop(pkg)
                     break
         return bad_deps
 
-    @staticfunction
+    @staticmethod
     def filter_rules(ignorelist, name, requires, compare, version):
         """
         Checks if the broken dependency matches anything in the ignore list.
@@ -219,21 +281,21 @@ class DepChecker(AppHandler):
         for ignoreitem in ignorelist:
             itemname, itemrequires, itemversion = ignoreitem
             if "*" in itemname:
-                name_regex = re.compile(sanitize_regex(itemname))
+                name_regex = re.compile(DepChecker.sanitize_regex(itemname))
                 if name_regex.match(name):
                     itemname = name
             if "*" in itemrequires:
-                requires_regex = re.compile(sanitize_regex(itemrequires))
+                requires_regex = re.compile(DepChecker.sanitize_regex(itemrequires))
                 if requires_regex.match(requires):
                     itemrequires = requires
             # If version is not given, it is a None object
             if itemversion is None:
                 itemversion = version
             elif "*" in itemversion:
-                version_regex = re.compile(sanitize_regex(itemversion))
+                version_regex = re.compile(DepChecker.sanitize_regex(itemversion))
                 if version_regex.match(version):
                     itemversion = version
-            if (name, requires, version) ==
+            if (name, requires, version) == \
                     (itemname, itemrequires, itemversion):
                 return True
         else:
@@ -302,7 +364,7 @@ baseurl=file://{}
         os.close(fdesc)
         return conffile
 
-    @staticfunction
+    @staticmethod
     def get_dependencies(resolver, dependency):
         """
         Given a dependency, this returns packages responsible for it.
@@ -312,53 +374,25 @@ baseurl=file://{}
             Adds source packages providing a requirement to the sack.
             """
             for package in sack.returnPackages():
-                providing_pkg = get_src_pkg(package)
+                providing_pkg = DepChecker.get_src_pkg(package)
                 deplist.append(providing_pkg)
 
         deplist = []
         
         # First, the original dependency
-        deplist.append(dep)
+        deplist.append(dependency)
 
         # Then, all packages that provide it
         _addpkgs(resolver.whatProvides(dependency, None, None))
 
         # For libraries, check for variant names
-        if re.match("lib.*\.so\.[0-9]+", dep):
-            new = re.sub("(lib.*\.so\.)([0-9])+", libmunge, dep)
-            __addpackages(resolver.whatProvides(new, None, None))
-            libname = dep.split('.')[0]
-            __addpackages(resolver.whatProvides(libname, None, None))
+        if re.match("lib.*\.so\.[0-9]+", dependency):
+            new = re.sub("(lib.*\.so\.)([0-9])+", DepChecker.libmunge, dependency)
+            _addpkgs(resolver.whatProvides(new, None, None))
+            libname = dependency.split('.')[0]
+            _addpkgs(resolver.whatProvides(libname, None, None))
 
         return deplist
-
-    @staticfunction
-    def get_printable_req(package, dependency):
-        """
-        Returns a human-readable dependency string.
-        """
-        name, depflag, version = dependency
-        requires = [name]
-        if depflag:
-            flag = yum.constants.LETTERFLAGS[depflag]
-            requires.append(flag)
-        if version:
-            requires.append(version)
-        return "{} requires {}".format(package, requires.join(" "))
-
-    @staticfunction
-    def get_src_package(package)
-    """
-    Given a package, returns the name of its SRPM, or None if none could be
-    found.
-    """
-    if package.arch == "src":
-        return package.name
-    srpm = package.returnSimple("sourcerpm")
-    if not srpm:
-        return None
-    else:
-        return srpm.split("-")[:-2].join("-")
 
     def get_valid_repos(self):
         """
@@ -367,16 +401,6 @@ baseurl=file://{}
         repositories = AppHandler.get_valid_repos(self)
         repositories.append("upstream")
         return repositories
-
-    @staticfunction
-    def libmunge(match):
-        """
-        Munges sonames.
-        """
-        if match.groups()[1].isdigit():
-            return "{}{}".format(match.groups()[0], int(match.groups()[1])+1)
-        else:
-            return "{}{}".format(match.groups()[0], match.groups()[1])
 
     def run(self, repotype, remove=False):
         """
@@ -389,12 +413,12 @@ baseurl=file://{}
         arches = self.config.get("repositories", "archs").split()
         for arch in arches:
             self.logger.info("Checking architecture: " + arch)
-            if not packages:
+            if not self.packages:
                 temprepodir = ""
             elif remove:
-                temprepodir = self.create_temprepo(packages, arch, repotype)
+                temprepodir = self.create_temprepo(self.packages, arch, repotype)
             else:
-                temprepodir = self.create_temprepo(packages, arch)
+                temprepodir = self.create_temprepo(self.packages, arch)
 
             # Generate the fake Yum configuration
             conffile = self.generate_config(repotype, arch, temprepodir, remove)
@@ -406,7 +430,7 @@ baseurl=file://{}
                 carch = "i686"
             elif arch == "ppc":
                 carch = "ppc64"
-            elif arch = "sparc":
+            elif arch == "sparc":
                 carch = "sparc64v"
             else:
                 carch = arch
@@ -415,7 +439,8 @@ baseurl=file://{}
             self.logger.info("Calculating dependency chains.")
             myrc = repotools.repoclosure.RepoClosure(config=conffile,
                                                      arch=[carch])
-            myrc.repos.setCacheDir(yum.misc.getCacheDir(reuse=False))
+            cachedir = yum.misc.getCacheDir(reuse=False)
+            myrc.repos.setCacheDir(cachedir)
             self.logger.info("Processing metadata returned from repoclosure.")
             myrc.readMetadata()
 
@@ -449,7 +474,7 @@ baseurl=file://{}
                     name = dependency[0]
                     self.logger.warning("\t" + 
                             get_printable_req(package, dependency))
-                    dependencies = get_dependencies(myrc, name)
+                    dependencies = DepChecker.get_dependencies(myrc, name)
                     broken.append((package, dependency, dependencies))
                     self.dependencies[src][packageid][arch] = broken
 
@@ -466,18 +491,6 @@ baseurl=file://{}
         # TODO check this
         return packages
 
-    @staticfunction
-    def sanitize_regex(expression):
-        """
-        Converts a string to a proper regular expression.
-        """
-        regex = string.replace(expression, ".", "\.")
-        regex.replace("*", ".*")
-        regex.replace("+", "\+")
-        regex.replace("(", "\(")
-        regex.replace(")", "\)")
-        return regex
-
     def generate_report(self, packagelist, treename):
         """
         Given a list of packages causing dependency errors, generates a report.
@@ -486,19 +499,20 @@ baseurl=file://{}
             return "There are no broken dependencies in {}.".format(treename)
 
         report = []
-        report.append("\n\n{} has broken dependencies in the {} tree:".format(
-                packagename, treename)
-        for key in package.keys():
-            subpackage = package[key]
-            for arch in subpackage.keys():
-                report.append("On {}:".format(arch))
-                for dependency in subpackage[arch]:
-                    # TODO
-                    report.append("\t" + get_printable_req(dep[0], dep[1]))
+        for package in packagelist:
+            report.append("\n\n{} has broken dependencies in {}:".format(
+                package, treename))
+            for key in package.keys():
+                subpackage = package[key]
+                for arch in subpackage.keys():
+                    report.append("On {}:".format(arch))
+                    for dep in subpackage[arch]:
+                        # TODO
+                        report.append("\t" + get_printable_req(dep[0], dep[1]))
         return "\n".join(report)
 
 
-def has_dependencies(repository, config=None):
+def has_dependencies(repository, config=None, packages=None):
     """
     Runs the dependency checking from an external script.
 

@@ -267,11 +267,11 @@ if __name__ == "__main__":
         pusher = Pusher(parser.parse_args().__dict__())
         pusher.create_lock()
         pusher.run()
-    except ConfigurationError as e:
+    except repotools.ConfigurationError as e:
         raise
-    except DependencyError as e:
+    except repotools.DependencyError as e:
         raise
-    except RepositoryError as e:
+    except repotools.RepositoryError as e:
         raise
-    except UserError as e:
+    except repotools.UserError as e:
         raise

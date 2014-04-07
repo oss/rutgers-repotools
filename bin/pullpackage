@@ -1,26 +1,277 @@
 #!/usr/bin/python
-""" Wrapper script to pull packages from repos. """
-###############################################################################
-#Programmer: Orcan Ogetbil    orcan@nbcs.rutgers.edu                          #
-#Date: 10/15/2010                                                             #
-#Filename: pullpackage                                                        #
-#                                                                             #
-#                                                                             #
-#       Copyright 2010 Orcan Ogetbil                                          #
-#                                                                             #
-#    This program is free software; you can redistribute it and/or modify     #
-#    it under the terms of the GNU General Public License as published by     #
-#    the Free Software Foundation; either version 2 of the License, or        #
-#    (at your option) any later version.                                      #
-#                                                                             #
-#    This program is distributed in the hope that it will be useful,          #
-#    but WITHOUT ANY WARRANTY; without even the implied warranty of           #
-#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the            #
-#    GNU General Public License for more details.                             #
-#                                                                             #
-###############################################################################
+"""
+Removes packages from repositories. This attempts to remove the given package
+from a repository, first doing dependency checking to ensure that the removal
+does not leave an unsatisfied dependency.
+"""
 
-import RUtools
+import argparse
+import repotools
 
-if __name__ == '__main__':
-    RUtools.run_pullpackage()
+from repotools import AppHandler
+
+class puller(AppHandler):
+    """
+    Does pulling from repositories.
+    """
+    def __init__(self, config_file=None, force=False, test=False,
+                 verbose=False, repository, packages):
+        """
+        Handles the initialization.
+        """
+        AppHandler.__init__(self)
+
+        # Load all required information up-front
+        self.distro, self.distver, self.target_repo = parse_distrepo(repository)
+        self.distname = self.config.get("repositories", "distname")
+        self.all_distvers = self.config.get("repositories",
+                                            "alldistvers").split()
+        self.debug_repos = self.config.get("repositories",
+                                           "repostodebug").split()
+        self.invalid_repos = self.config.get("repositories",
+                                             "dontpublishrepos").split()
+        valid_repos = [r for r in self.config.get("repositories", "allrepos")
+                         if r not in invalid_repos]
+
+    def depcheck(self):
+        """
+        Does dependency checking.
+        """
+        pass
+
+    def get_replaced_packages(self, packages):
+        """
+        Finds packages in the target repository that will be replaced by the
+        pushed packages.
+        """
+        # Set multicall to false for now so we can get results
+        self.kojisession.multicall = False
+
+        replaced_pkgs = []
+        for pkg in packages:
+            pkg = pkg.split("-")
+            # last two fields are release and version, everything else must be name
+            pkg_name = "-".join(pkg[:-2])
+            # grab list of lists of packages (all builds for a given package)
+            results = self.kojisession.getLatestRPMS(to_repo, pkg_name)
+            for res in results:
+                for build in res:
+                    if "nvr" in build and "tag_info" in build and
+                        build["tag_info"] == to_repo:
+                            replaced_pkgs.append(build["nvr"])
+                            break
+
+        # finally, set multicall back to true
+        kojisession.multicall = True
+        return replaced_pkgs
+
+    def get_tags(self, packages):
+        """
+        Obtains the tags associated with packages in Koji.
+        """
+        # TODO change the flow of control and reduce raised exceptions?
+        for package in packages:
+            # Extremely naive check
+            if package.count("-") < 2 or package[0] == "-" or package[-1] == "-":
+                raise UserError("Invalid NVR format for {}".format(package))
+
+        allpkgtags = []
+        for package in packages:
+            # Get the build information from Koji
+            buildinfo = self.kojisession.getBuild(package)
+            pkgtags = []
+            if buildinfo:
+                # Find all tags associated with this package
+                tags = self.kojisession.listTags(package)
+                for tag in tags:
+                    pkgtags.append(tag["name"])
+
+                if not pkgtags:
+                    # Contains no Koji tags
+                    raise RepositoryError("Package {} has no valid Koji tags.")
+                if to_repo in pkgtags:
+                    # Already exists in the target repository
+                    raise RepositoryError("{} already exists in {}.".format(
+                        package, to_repo))
+            else:
+                # Nothing found in Koji
+                raise RepositoryError("{} does not exist in Koji.".format(
+                                        package))
+            allpkgtags.append(pkgtags)
+        return allpkgtags
+
+    def has_debuginfo(self, packages):
+        """
+        Returns true if the given packages have an associated debuginfo package;
+        false otherwise.
+        """
+        kojitempsession = self.get_koji_session(ssl=False)
+
+        for package in packages:
+            build = kojitempsession.getBuild(package)
+            rpmlist = kojitempsession.listRPMs(build["id"])
+            for irpm in rpmlist:
+                if irpm["name"].find("-debuginfo") != -1:
+                    self.logger.info("Debuginfo packages found.")
+                    return True
+
+        self.logger.info("No debuginfo packages found for {}.".format(packages))
+        return False
+
+    def pull(self):
+        """
+        Does the main pulling.
+        """
+        if self.force:
+            self.logger.info("Force pull - skipping dependency checking.")
+        elif not require_depcheck():
+            self.logger.info("Dependency checking is not needed.")
+        else:
+            self.logger.info("Beginning dependency check.")
+            depcheck()
+            # TODO
+
+        # Use a temporary koji session
+        kojitempsession = self.get_koji_session(ssl=False)
+        kojisession.multicall = True
+        message = []
+        packagelist = []
+        changelogs = []
+
+        # Get the packages replaced by this push
+        # TODO fix signature
+        replaced_packages = self.get_replaced_packages(...)
+
+        # Untag the replaced packages
+        for pkg in replaced_packages:
+            kojisession.untagBuildBypass(self.target_repo, pkg)
+
+        # Tag the new packages into the target repository
+        for pkg in packages:
+            app.logger.info("Tagging {} into {}".format(pkg, self.target_repo))
+            if not self.test:
+                kojisession.tagBuildBypass(self.target_repo, package)
+
+            # Build the email message
+            message.append(package)
+            packagelist.append(package)
+
+            # Add up to three lines of change log
+            changelogs.append("\n{}\n{} ".format(package, "-"*len(package)))
+            chlog = kojitempsession.getChangelogEntries(package)
+            for entry in range(min(len(chlog), 3)):
+                timestamp = datetime.date.fromtimestamp(chlog[entry]["date_ts"])
+                changelogs.append("\n{} {}\n{}\n".format(
+                    timestamp.strftime("%a %b %d %Y"),
+                    chlog[entry]["author"],
+                    chlog[entry]["text"]))
+
+        # Get the results from Koji
+        results = kojisession.multiCall()
+
+        # Look for errors
+        clean = True
+        errors = []
+        for result in results:
+            if result["faultString"]:
+                app.logger.error()
+                clean = False
+
+
+
+
+    def require_depcheck(self):
+        """
+        Determines whether or not dependency checking is needed.
+
+        This relies on the fact that the publish repositories in the
+        configuration file are listed in descending hierarchal order. It plays
+        with the indices, so pushing a package downwards in the hierarchy
+        (theoretically) does not require dependency checking.
+        """
+        # TODO Import this or move it
+        # TODO should be self.gettags
+        pkgstags = push.check_packages(myapp, kojisession, packages, to_repo)
+
+        to_indices = []
+        for pkgtags in pkgstags:
+            indices = []
+            for tag in pkgtags:
+                try:
+                    indices.append(to_repos.index(tag))
+                except ValueError:
+                    # May be in the staging repo
+                    indices.append(99)
+
+            to_indices.append(min(indices))
+
+        for index in to_indices:
+            if to_repos.index(to_repo) < index:
+                return True
+        return False
+
+    def run(self):
+        """
+        Wrapper around depcheck and push that times the main operation.
+        """
+        localtime = time.asctime(time.localtime(time.time()))
+        self.logger.info("Push started on: {}".format(localtime))
+
+        if self.test:
+            # Dependency checking only
+            depcheck()
+        else:
+            # Run the full push
+            push()
+
+
+if __name__ == "__main__":
+    os.umask(002)
+
+    # Set up command line options
+    parser = argparse.ArgumentParser(
+            prog="pullpackage",
+            description="Removes packages from Rutgers repositories.",
+            epilog="Made with love by Open System Solutions.")
+    parser.add_argument(
+            "repository",
+            help="A repository formatted as <distro><version>-<reponame>")
+    parser.add_argument(
+            "packages",
+            help="Space-separated packages in NVR format.",
+            nargs="+")
+    parser.add_argument(
+            "-f",
+            "--force",
+            action="store_true",
+            help="Do not do dependency checking.")
+    parser.add_argument(
+            "-t",
+            "--test",
+            action="store_true",
+            help="Do dependency checking and exit without an actual pull.")
+    parser.add_argument(
+            "-v",
+            "--verbose",
+            action="store_true",
+            help="Use verbose output.")
+    parser.add_argument(
+            "-c",
+            "--config_file",
+            action="store",
+            default="/etc/rutgers-repotools.cfg",
+            help="Specify config file. Defaults to /etc/rutgers-repotools.cfg.")
+
+    # Parse the command-line arguments
+    try:
+        puller = puller(parser.parse_args().__dict__())
+        puller.create_lock()
+        puller.run()
+    except repotools.ConfigurationError as e:
+        raise
+    except repotools.DependencyError as e:
+        raise
+    except repotools.RepositoryError as e:
+        raise
+    except repotools.UserError as e:
+        raise
