@@ -114,7 +114,7 @@ def push_packages(app, kojisession, packages, to_repo, user, test):
     kojisession.multicall = True
     message = []
     packagelist = []
-    changelogs = ""
+    changelogs = u""
 
     # get the packages that will be replaced by this push
     replaced_pkgs = get_replaced_packages(app,kojisession,packages,to_repo)
@@ -136,10 +136,10 @@ def push_packages(app, kojisession, packages, to_repo, user, test):
 %s """ % (package, "-"*len(package))
         clog = kojitmpsession.getChangelogEntries(package)
         for entry in range(min(len(clog), 3)):
-            tstamp = datetime.date.fromtimestamp(
-                clog[entry]["date_ts"]).strftime("%a %b %d %Y")
-            author = clog[entry]["author"]
-            text = clog[entry]["text"]
+            tstamp = unicode(datetime.date.fromtimestamp(
+                clog[entry]["date_ts"]).strftime("%a %b %d %Y"), "utf-8")
+            author = unicode(clog[entry]["author"], "utf-8")
+            text = unicode(clog[entry]["text"], "utf-8")
             changelogs += """
 * %s %s
 %s
@@ -181,7 +181,7 @@ def push_packages(app, kojisession, packages, to_repo, user, test):
             email_body.append("Test Results")
             email_body.append("(No packages have actually been pushed.)\n")
 
-        email_body.append("""The following packages have been pushed by {0} to {1} :
+        email_body.append(u"""The following packages have been pushed by {0} to {1}:
 
 {2}
 
@@ -194,7 +194,7 @@ The repositories are regenerated and the packages are ready to use.
 Recent changes:
 {4}
     """.format(user, to_repo, message, replaced, changelogs))
-        email_body = "\n".join(email_body)
+        email_body = u"\n".join(email_body)
         email_body.strip()
 
         return [email_subject, email_body]
