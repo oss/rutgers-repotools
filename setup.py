@@ -15,7 +15,7 @@ if "install" in args:
 
 # Finally, run the setup
 setup(name         = 'rutgers-repotools',
-      version      = '0.7.9',
+      version      = '0.7.10',
       description  = 'Dependency checking and publish scripts',
       author       = 'Open System Solutions',
       author_email = 'oss@oss.rutgers.edu',
