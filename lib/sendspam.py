@@ -67,10 +67,10 @@ For more information, see https://github.com/oss/rutgers-repotools.
 
     smtp_host = app.config.get("report", "smtp_host")
     try:
-        sendmail(unicode(self.config.get("report", "from_addr")),
-                 unicode(self.config.get("report", "to_addr")),
+        sendmail(unicode(app.config.get("report", "from_addr")),
+                 unicode(app.config.get("report", "to_addr")),
                  unicode(subject),
                  body,
-                 smtp_host=self.config.get("report", "smtp_host"))
+                 smtp_host=app.config.get("report", "smtp_host"))
     except Exception, e:
         app.logger.error("Sending mail failed: " + str(e))
