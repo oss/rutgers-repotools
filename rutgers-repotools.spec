@@ -2,7 +2,7 @@
 
 Summary:   Dependency checking and publish scripts
 Name:      rutgers-repotools
-Version:   0.7.10
+Version:   0.7.11
 Release:   1%{?dist}
 License:   GPLv2+
 Group:     System Environment/Base
