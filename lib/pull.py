@@ -19,7 +19,7 @@ the from_repo and copies the corresponding debuginfo subpackages. """
 #    GNU General Public License for more details.                             #
 #                                                                             #
 ###############################################################################
-
+import sendspam
 
 def check_packages(app, kojisession, packages, to_repo):
     """ Check if the given packages are really there
