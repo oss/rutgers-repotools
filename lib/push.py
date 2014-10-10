@@ -138,8 +138,14 @@ def push_packages(app, kojisession, packages, to_repo, user, test):
         for entry in range(min(len(clog), 3)):
             tstamp = unicode(datetime.date.fromtimestamp(
                 clog[entry]["date_ts"]).strftime("%a %b %d %Y"), "utf-8")
-            author = unicode(clog[entry]["author"], "utf-8")
-            text = unicode(clog[entry]["text"], "utf-8")
+            try:
+                author = unicode(clog[entry]["author"], "utf-8")
+            except TypeError:
+                author = clog[entry]["author"]
+            try:
+                text = unicode(clog[entry]["text"], "utf-8")
+            except TypeError:
+                text = clog[entry]["text"]
             changelogs += """
 * %s %s
 %s
