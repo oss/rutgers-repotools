@@ -65,7 +65,6 @@ Repository Tools family.
 For more information, see https://github.com/oss/rutgers-repotools.
 """.format(body, "-"*79, scriptname)
 
-    smtp_host = app.config.get("report", "smtp_host")
     try:
         sendmail(unicode(app.config.get("report", "from_addr")),
                  unicode(app.config.get("report", "to_addr")),
