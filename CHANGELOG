@@ -1,4 +1,8 @@
-2014-10-93 (0.7.11)
+2014-10-10 (0.7.12)
+    - Fix UTF-8 decode error in push.py when given a Unicode object
+    - Correct formatting of email body in sendspam.py
+    - Remove extraneous variable in sendspam.py
+2014-10-03 (0.7.11)
     - Another fix in mail function
     - Add missing import of sendspam to pull.py
 2014-09-25 (0.7.10)
