@@ -303,11 +303,18 @@ def pullpackage(myapp, mail, test, force, from_repo, packages, checkdep_from_rep
     # order (most general to most specific). If we are pushing upwards, we must
     # do dependency checking; otherwise we skip it
 
+    # If there exists a tag in pkgtags that does not exist in full_repos, emit a
+    # warning instead of crashing.
+
     from_indices = []
     for pkgtags in pkgstags:
         indices = []
         for tag in pkgtags:
-            indices.append(full_repos.index(tag))
+            try:
+                indices.append(full_repos.index(tag))
+            except ValueError:
+                myapp.logger.warning(
+                        "Tag {0} is not one of {1}".format(tag, full_repos))
         from_indices.append(min(indices))
 
     for index in from_indices:
