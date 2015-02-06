@@ -154,7 +154,10 @@ def remove_old(app, kojisession, dbase):
 
     # We only want packages for our current distver
     dbase.query(selection_query)
-    res = dbase.store_result()
+    try:
+        res = dbase.store_result()
+    except e:
+        app.logger.warning(e.message)
     dat = res.fetch_row(maxrows=0)
     build_ids_in_db = []
     for entry in dat:
