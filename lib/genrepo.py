@@ -25,7 +25,10 @@ import shutil
 import string
 import tempfile
 
-from repoutils import genpkgmetadata
+import repoutils
+
+def genpkgmetadata(args):
+    return repoutils.genpkgmetadata(['-s', 'sha1'] + args)
 
 def mkdir_p(path):
     """ Creates recursive directories """
