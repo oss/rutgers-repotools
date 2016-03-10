@@ -1,3 +1,8 @@
+2016-03-10 (0.7.14)
+    -We now catch remove_old() exceptions
+    -Fixed issue where populate-rpmfind-db would delete the database before 
+     adding a new repo when done with the -r option, causing the list from 
+     the previously done repos to disappear.
 2014-10-17 (0.7.13)
     - pullpackage emits warning instead of crashing when encountering an
       unexpected tag during dependency checking preprocessing
