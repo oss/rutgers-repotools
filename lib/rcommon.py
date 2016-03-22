@@ -33,7 +33,7 @@ import time
 
 class AppHandler:
     """ Repotool application handler class """
-    def __init__(self, verifyuser=True, config_file='/etc/rutgers-repotools.cfg'):
+    def __init__(self, verifyuser=True, config_file=RUtools.DEFAULT_CONFIG_PATH):
         self.config = None
         self.load_config(config_file)
         self.username = getpass.getuser()

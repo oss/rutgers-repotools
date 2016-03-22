@@ -577,10 +577,7 @@ def depcheck_results(myapp, user, packages, results, mail, action="push"):
     distver = myapp.distver
     distname = myapp.config.get("repositories", "distname_nice")
     if not results in ["", "baddep"]:
-        guilt = "{0} attempted and failed to {1} the following packages to {2} {3}:".format(user,
-                                                                                            action,
-                                                                                            distname,
-                                                                                            distver)
+        guilt = "{0} attempted and failed to {1} the following packages to {2} {3}:".format(user, action, distname, distver)
         for package in packages:
             guilt += "\t" + package + "\n"
         timerun = myapp.time_run()

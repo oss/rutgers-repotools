@@ -119,9 +119,7 @@ def pushpackage(myapp, mail, test, force, distname, distver, to_repo, packages,
             myapp.logger.info("The specified packages are already inherited from a parent repo.")
             myapp.logger.info("No need to do dependency checking.")
 
-    if test:
-        myapp.logger.info("Test of pushpackage complete.")
-    else:
+    if not test:
         errors = update_tags(myapp, kojisession, packages,
                              "{}{}-{}".format(distname, distver, to_repo))
         emaildata = prepare_email(app, packages, errors)
@@ -155,6 +153,8 @@ def pushpackage(myapp, mail, test, force, distname, distver, to_repo, packages,
             myapp.logger.info("Finally, sending email.")
             email_body = RUtools.add_time_run(emaildata[1], timerun)
             sendspam.sendspam(myapp, emaildata[0], email_body, scriptname="pushpackage")
+    else:
+        myapp.logger.info("Test of pushpackage complete.")
 
 
 def depcheck_is_necessary(kojisession, packages, repo):
