@@ -22,8 +22,7 @@ and copies the corresponding debuginfo subpackages. """
 
 import datetime
 import time
-import sendspam
-import rcommon
+import sendspam, rcommon, checkdep, genrepos, populatedb
 from optparse import OptionParser
 
 def main():
