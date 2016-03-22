@@ -122,35 +122,39 @@ def pushpackage(myapp, mail, test, force, distname, distver, to_repo, packages,
     if test:
         myapp.logger.info("Test of pushpackage complete.")
     else:
-        pushresults = push_packages(myapp, kojisession, packages,
-                                     distname + distver + "-" + to_repo,
-                                     user,test)
+        errors = update_tags(myapp, kojisession, packages,
+                             "{}{}-{}".format(distname, distver, to_repo))
+        emaildata = prepare_email(app, packages, errors)
 
-        # We are not exposing the build repos anymore. So create our own repo
-        myapp.logger.info("Next, regenerate repositories and expose.")
+        if errors:
+            for error in errors:
+                myapp.logger.error(error)
+        else:
+            # We are not exposing the build repos anymore. So create our own repo
+            myapp.logger.info("Next, regenerate repositories and expose.")
 
-        dontpublishrepos = myapp.config.get("repositories",
+            dontpublishrepos = myapp.config.get("repositories",
                                             "dontpublishrepos").split()
-        repostodebug = myapp.config.get("repositories", "repostodebug").split()
+            repostodebug = myapp.config.get("repositories", "repostodebug").split()
 
-        dbgcheck = debug_check(myapp, packages)
-        debugrepo_built = False
-        repo_built = False
+            dbgcheck = debug_check(myapp, packages)
+            debugrepo_built = False
+            repo_built = False
 
-        if not to_repo in dontpublishrepos:
-            if debugrepo_built or not to_repo in repostodebug:
-                dbgcheck = 0
-            genrepo.gen_repos(myapp, [to_repo], dbgcheck)
-            repo_built = True
+            if not to_repo in dontpublishrepos:
+                if debugrepo_built or not to_repo in repostodebug:
+                    dbgcheck = 0
+                genrepo.gen_repos(myapp, [to_repo], dbgcheck)
+                repo_built = True
 
-        if repo_built:
-            populatedb.update_db(myapp, False, False)
+            if repo_built:
+                populatedb.update_db(myapp, False, False)
 
         if mail:
             timerun = myapp.time_run()
             myapp.logger.info("Finally, sending email.")
-            email_body = add_time_run(pushresults[1], timerun)
-            sendspam.sendspam(myapp, pushresults[0], email_body, scriptname="pushpackage")
+            email_body = RUtools.add_time_run(emaildata[1], timerun)
+            sendspam.sendspam(myapp, emaildata[0], email_body, scriptname="pushpackage")
 
 
 def depcheck_is_necessary(kojisession, packages, repo):
@@ -280,30 +284,34 @@ def koji_get_errors_from_result(app, results):
     return [r['faultString'] for r in results if 'faultString' in r]
 
 
-def push_packages(app, kojisession, packages, to_repo, user, test):
-    """ Tag into the to_repo. Return a message with the results
-    to be emailed """
-    # NOTE: This could use some cleanup in the future
+def update_tags(app, kojisession, packages, to_repo):
+    """ Tag into the to_repo. Returns an array of errors encountered """
     kojitmpsession = app.get_koji_session(ssl = False)
     kojisession.multicall = True
-    message = []
-    packagelist = []
-    changelogs = u""
 
     # Untag replaced packages and tag pushed packages
-    if not test:
-        replaced_pkgs = get_replaced_packages(app,kojisession,packages,to_repo)
-        koji_untag_packages(app, kojisession, to_repo, packages)
-        koji_tag_packages(app, kojisession, to_repo, packages)
+    replaced_pkgs = get_replaced_packages(app, kojisession, packages, to_repo)
+    koji_untag_packages(app, kojisession, to_repo, replaced_pkgs)
+    koji_tag_packages(app, kojisession, to_repo, packages)
 
-    # Create results message
+    # Apply changes to Koji
+    results = kojisession.multiCall()
+    errors = koji_get_errors_from_result(results)
+
+    for error in errors:
+        app.logger.error(error)
+
+    return errors
+    
+
+def get_changelogs(kojisession, packages):
     for package in packages:
         message.append(package)
         packagelist.append(package)
         changelogs += """
 %s
 %s """ % (package, "-"*len(package))
-        clog = kojitmpsession.getChangelogEntries(package)
+        clog = kojisession.getChangelogEntries(package)
         for entry in range(min(len(clog), 3)):
             tstamp = unicode(datetime.date.fromtimestamp(
                 clog[entry]["date_ts"]).strftime("%a %b %d %Y"), "utf-8")
@@ -320,14 +328,9 @@ def push_packages(app, kojisession, packages, to_repo, user, test):
 %s
 """ % (tstamp, author, text)
 
-    # Apply changes to Koji
-    results = kojisession.multiCall()
-    errors = koji_get_errors_from_result(results)
+    return changelogs
 
-    for error in errors:
-        app.logger.error(error)
-
-    # Prepare for the email
+def prepare_email(app, packagelist, errors):
     distname = app.config.get("repositories", "distname_nice")
     distver = app.distver
     packagelist = ", ".join(packagelist)
