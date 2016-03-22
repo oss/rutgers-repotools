@@ -41,19 +41,13 @@ def main():
     usage += "  <to_repo>       one of: " + string.join(to_repos, " ") + "\n"
     usage += "  <package(s)>    A list of packages in NVR format"
     parser = OptionParser(usage)
-    parser.add_option("--nomail",
-                      action="store_true",
+    parser.add_option("--nomail", action="store_true",
                       help="Do not send an email notification.")
-    parser.add_option("-f", "--force",
-                      action="store_true",
+    parser.add_option("-f", "--force", action="store_true",
                       help="Do not do dependency checking.")
-    parser.add_option("-t", "--test",
-                      default=False,
-                      action="store_true",
+    parser.add_option("-t", "--test", default=False, action="store_true",
                       help="Do the dependency checking and exit. No actual pushes are made.")
-    parser.add_option("-v", "--verbose",
-                      default=False,
-                      action="store_true",
+    parser.add_option("-v", "--verbose", default=False, action="store_true",
                       help="Verbose output.")
 
     # Parse the command line arguments
@@ -234,7 +228,7 @@ def push_packages(app, kojisession, packages, to_repo, user, test):
 %s
 """ % (tstamp, author, text)
 
-    # Get the results
+    # Apply changes to Koji
     results = kojisession.multiCall()
 
     # Look for errors
@@ -261,7 +255,8 @@ def push_packages(app, kojisession, packages, to_repo, user, test):
         sendspam.sendspam(app, email_subject, email_body, scriptname="pushpackage")
         app.exit(2)
     else:
-        email_subject = "{0} {1} - Push Successful - {2}".format(distname, distver, packagelist)
+        email_subject = "{0} {1} - Push Successful - {2}".format(distname, 
+                distver, packagelist)
         email_body = []
 
         message = '\t' + '\n\t'.join(message)
