@@ -21,7 +21,91 @@ and copies the corresponding debuginfo subpackages. """
 ###############################################################################
 
 import datetime
+import time
 import sendspam
+import rcommon
+from optparse import OptionParser
+
+def main():
+    """ Parses command line arguments and dispatches request to pushpackage """
+    os.umask(002)
+    myapp = rcommon.AppHandler(verifyuser=True)
+
+    # Grab all the repository information from the config file
+    versions = myapp.config.get("repositories", "alldistvers").split()
+    distname = myapp.config.get("repositories", "distname")
+    to_repos = RUtools.get_publishrepos(myapp)
+
+    # Usage, etc.
+    usage =  "usage: %prog [options] <distro>-<to_repo> <package(s)>\n\n"
+    usage += "  <distro>     one of: " + string.join([distname + v for v in versions], " ") + "\n"
+    usage += "  <to_repo>       one of: " + string.join(to_repos, " ") + "\n"
+    usage += "  <package(s)>    A list of packages in NVR format"
+    parser = OptionParser(usage)
+    parser.add_option("--nomail",
+                      action="store_true",
+                      help="Do not send an email notification.")
+    parser.add_option("-f", "--force",
+                      action="store_true",
+                      help="Do not do dependency checking.")
+    parser.add_option("-t", "--test",
+                      default=False,
+                      action="store_true",
+                      help="Do the dependency checking and exit. No actual pushes are made.")
+    parser.add_option("-v", "--verbose",
+                      default=False,
+                      action="store_true",
+                      help="Verbose output.")
+
+    # Parse the command line arguments
+    (options, args) = parser.parse_args(sys.argv[1:])
+    if len(args) < 2:
+        myapp.logger.error("Error: Too few arguments: " + str(args))
+        myapp.logger.error("Run with --help to see correct usage")
+        myapp.exit(1)
+
+    # Create the lock file
+    myapp.create_lock()
+
+    # Set the logger and other options
+    verbosity = logging.DEBUG if options.verbose else logging.INFO
+    myapp.init_logger(verbosity)
+    mail = not options.nomail
+    if options.test:
+        mail = False
+        myapp.logger.warning("This is a test run. No packages will be pushed. No emails will be sent.")
+
+    # Examine the arguments
+    packages = args[1:]
+    distro, distver, to_repo = RUtools.parse_distrepo(args[0])
+    if (distro is None or distver is None or to_repo is None):
+        myapp.logger.error("Error: Badly formatted distribution, version or repository.")
+        myapp.exit(1)
+
+    # Sanity checks for the distro name, version, repository, etc.
+    if distro != distname:
+        myapp.logger.error("Error: '" + distro + "' is not a valid distribution name.")
+        myapp.exit(1)
+    if not distver in versions:
+        myapp.logger.error("Error: '" + distro + distver + "' is not a valid distribution version.")
+        myapp.exit(1)
+    if not to_repo in to_repos:
+        myapp.logger.error( "Error: Invalid to_repo: " + to_repo)
+        myapp.exit(1)
+
+    myapp.distver = distver
+
+    # Run the script and time it
+    localtime = time.asctime(time.localtime(time.time()))
+    myapp.logger.info("Push started on", localtime)
+    pushpackage(myapp, mail, options.test, options.force, distname, distver, to_repo, packages)
+    timerun = myapp.time_run()
+    if options.test:
+        myapp.logger.warning("End of test run. " + str(timerun) + " s")
+    else:
+        myapp.logger.info("Success! Time run: " + str(timerun) + " s")
+
+    myapp.exit(0)
 
 def check_packages(app, kojisession, packages, to_repo):
     """ Check if the given packages are really there

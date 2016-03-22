@@ -72,6 +72,14 @@ def parse_distrepo(distrepo):
     else:
         return None, None, None
 
+def get_publishrepos(app):
+    """ Calculates the list of repos to be published."""
+    to_repos = app.config.get("repositories", "allrepos").split()
+    for drepo in app.config.get("repositories","dontpublishrepos").split():
+        if drepo in to_repos:
+            to_repos.remove(drepo)
+    return to_repos
+
 
 def add_time_run(body, timerun):
     """ Adds a line to include time run on the email to be sent """
@@ -478,156 +486,10 @@ def run_movepackage(my_config_file='/etc/rutgers-repotools.cfg'):
     else:
         myapp.logger.info("Success! Time run: " + str(timerun) + " s")
 
-    myapp.exit(0)
+    myapp.exit(0) 
 
 
-def run_pushpackage(my_config_file="/etc/rutgers-repotools.cfg"):
-    """ Wrapper function to publish packages. """
-    os.umask(002)
-    myapp = rcommon.AppHandler(verifyuser=True,config_file=my_config_file)
 
-    # Grab all the repository information from the config file
-    versions = myapp.config.get("repositories", "alldistvers").split()
-    distname = myapp.config.get("repositories", "distname")
-    to_repos = get_publishrepos(myapp)
-
-    # Usage, etc.
-    usage =  "usage: %prog [options] <distro>-<to_repo> <package(s)>\n\n"
-    usage += "  <distro>     one of: " + string.join([distname + v for v in versions], " ") + "\n"
-    usage += "  <to_repo>       one of: " + string.join(to_repos, " ") + "\n"
-    usage += "  <package(s)>    A list of packages in NVR format"
-    parser = OptionParser(usage)
-    parser.add_option("--nomail",
-                      action="store_true",
-                      help="Do not send an email notification.")
-    parser.add_option("-f", "--force",
-                      action="store_true",
-                      help="Do not do dependency checking.")
-    parser.add_option("-t", "--test",
-                      default=False,
-                      action="store_true",
-                      help="Do the dependency checking and exit. No actual pushes are made.")
-    parser.add_option("-v", "--verbose",
-                      default=False,
-                      action="store_true",
-                      help="Verbose output.")
-
-    # Parse the command line arguments
-    (options, args) = parser.parse_args(sys.argv[1:])
-    if len(args) < 2:
-        myapp.logger.error("Error: Too few arguments: " + str(args))
-        myapp.logger.error("Run with --help to see correct usage")
-        myapp.exit(1)
-
-    # Create the lock file
-    myapp.create_lock()
-
-    # Set the logger and other options
-    verbosity = logging.DEBUG if options.verbose else logging.INFO
-    myapp.init_logger(verbosity)
-    mail = not options.nomail
-    if options.test:
-        mail = False
-        myapp.logger.warning("This is a test run. No packages will be pushed. No emails will be sent.")
-
-    # Examine the arguments
-    packages = args[1:]
-    distro, distver, to_repo = parse_distrepo(args[0])
-    if (distro is None or distver is None or to_repo is None):
-        myapp.logger.error("Error: Badly formatted distribution, version or repository.")
-        myapp.exit(1)
-
-    # Sanity checks for the distro name, version, repository, etc.
-    if distro != distname:
-        myapp.logger.error("Error: '" + distro + "' is not a valid distribution name.")
-        myapp.exit(1)
-    if not distver in versions:
-        myapp.logger.error("Error: '" + distro + distver + "' is not a valid distribution version.")
-        myapp.exit(1)
-    if not to_repo in to_repos:
-        myapp.logger.error( "Error: Invalid to_repo: " + to_repo)
-        myapp.exit(1)
-
-    myapp.distver = distver
-
-    # Run the script and time it
-    localtime = time.asctime(time.localtime(time.time()))
-    myapp.logger.info("Push started on", localtime)
-    pushpackage(myapp, mail, options.test, options.force, distname, distver, to_repo, packages)
-    timerun = myapp.time_run()
-    if options.test:
-        myapp.logger.warning("End of test run. " + str(timerun) + " s")
-    else:
-        myapp.logger.info("Success! Time run: " + str(timerun) + " s")
-
-    myapp.exit(0)
-
-
-def pushpackage(myapp, mail, test, force, distname, distver, to_repo, packages,
-                checkdep_to_repo=False):
-    """ The actual pusher. """
-    to_repos = get_publishrepos(myapp)
-    user = myapp.username
-    kojisession = myapp.get_koji_session(ssl = True)
-    pkgstags = push.check_packages(myapp, kojisession, packages, to_repo)
-
-    to_indices = []
-    for pkgtags in pkgstags:
-        indices = []
-        for tag in pkgtags:
-            try:
-                indices.append(to_repos.index(tag))
-            except ValueError:
-                # May be in the staging repo
-                indices.append(99)
-
-        to_indices.append(min(indices))
-
-    for index in to_indices:
-        if to_repos.index(to_repo) < index:
-            checkdep_to_repo = True
-
-    # Do not do dependency checking when --force flag is given
-    if not force:
-        if checkdep_to_repo:
-            results = checkdep.doit(myapp, to_repo, packages)
-            depcheck_results(myapp, user, packages, results, mail)
-        else:
-            myapp.logger.info("The specified packages are already inherited from a parent repo.")
-            myapp.logger.info("No need to do dependency checking.")
-
-    if test:
-        myapp.logger.info("Test of pushpackage complete.")
-    else:
-        pushresults = push.push_packages(myapp, kojisession, packages,
-                                     distname + distver + "-" + to_repo,
-                                     user,test)
-
-        # We are not exposing the build repos anymore. So create our own repo
-        myapp.logger.info("Next, regenerate repositories and expose.")
-
-        dontpublishrepos = myapp.config.get("repositories",
-                                            "dontpublishrepos").split()
-        repostodebug = myapp.config.get("repositories", "repostodebug").split()
-
-        dbgcheck = push.debug_check(myapp, packages)
-        debugrepo_built = False
-        repo_built = False
-
-        if not to_repo in dontpublishrepos:
-            if debugrepo_built or not to_repo in repostodebug:
-                dbgcheck = 0
-            genrepo.gen_repos(myapp, [to_repo], dbgcheck)
-            repo_built = True
-
-        if repo_built:
-            populatedb.update_db(myapp, False, False)
-
-        if mail:
-            timerun = myapp.time_run()
-            myapp.logger.info("Finally, sending email.")
-            email_body = add_time_run(pushresults[1], timerun)
-            sendspam.sendspam(myapp, pushresults[0], email_body, scriptname="pushpackage")
 
 
 def run_rebuild_repos(my_config_file='/etc/rutgers-repotools.cfg'):
@@ -734,10 +596,4 @@ def depcheck_results(myapp, user, packages, results, mail, action="push"):
         myapp.exit(1)
 
 
-def get_publishrepos(app):
-    """ Calculates the list of repos to be published."""
-    to_repos = app.config.get("repositories", "allrepos").split()
-    for drepo in app.config.get("repositories","dontpublishrepos").split():
-        if drepo in to_repos:
-            to_repos.remove(drepo)
-    return to_repos
+
