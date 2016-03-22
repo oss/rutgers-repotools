@@ -91,16 +91,137 @@ def main():
     # Run the script and time it
     localtime = time.asctime(time.localtime(time.time()))
     myapp.logger.info("Push started on", localtime)
-    pushpackage(myapp, mail, options.test, options.force, distname, distver, to_repo, packages)
+    
+    pushpackage(myapp, mail, options.test, options.force, distname, distver, 
+            to_repo, packages)
+    
     timerun = myapp.time_run()
+    
     if options.test:
         myapp.logger.warning("End of test run. " + str(timerun) + " s")
     else:
         myapp.logger.info("Success! Time run: " + str(timerun) + " s")
-
     myapp.exit(0)
 
-def check_packages(app, kojisession, packages, to_repo):
+
+def pushpackage(myapp, mail, test, force, distname, distver, to_repo, packages,
+                checkdep_to_repo=False):
+    """ The actual pusher. """
+    user = myapp.username
+    kojisession = myapp.get_koji_session(ssl=True)
+
+    # Do not do dependency checking when --force flag is given
+    if not force:
+        if depcheck_is_necessary(kojisession, packages, to_repo):
+            results = checkdep.doit(myapp, to_repo, packages)
+            RUtools.depcheck_results(myapp, user, packages, results, mail)
+        else:
+            myapp.logger.info("The specified packages are already inherited from a parent repo.")
+            myapp.logger.info("No need to do dependency checking.")
+
+    if test:
+        myapp.logger.info("Test of pushpackage complete.")
+    else:
+        pushresults = push_packages(myapp, kojisession, packages,
+                                     distname + distver + "-" + to_repo,
+                                     user,test)
+
+        # We are not exposing the build repos anymore. So create our own repo
+        myapp.logger.info("Next, regenerate repositories and expose.")
+
+        dontpublishrepos = myapp.config.get("repositories",
+                                            "dontpublishrepos").split()
+        repostodebug = myapp.config.get("repositories", "repostodebug").split()
+
+        dbgcheck = debug_check(myapp, packages)
+        debugrepo_built = False
+        repo_built = False
+
+        if not to_repo in dontpublishrepos:
+            if debugrepo_built or not to_repo in repostodebug:
+                dbgcheck = 0
+            genrepo.gen_repos(myapp, [to_repo], dbgcheck)
+            repo_built = True
+
+        if repo_built:
+            populatedb.update_db(myapp, False, False)
+
+        if mail:
+            timerun = myapp.time_run()
+            myapp.logger.info("Finally, sending email.")
+            email_body = add_time_run(pushresults[1], timerun)
+            sendspam.sendspam(myapp, pushresults[0], email_body, scriptname="pushpackage")
+
+
+def depcheck_is_necessary(kojisession, packages, repo):
+    """ Returns true if a depcheck is needed with this push
+    
+    A depcheck is needed when the package is pushed up the parent-child repo
+    chain -- for example, if the package is in staging and is being pushed
+    to stable. This depends on a correct ordering of repos in the config
+    file """
+    pkgstags = koji_get_tags(myapp, kojisession, packages, repo)
+    to_repos = RUtools.get_publishrepos(myapp)
+
+    to_indices = []
+    for pkgtags in pkgstags:
+        indices = []
+        for tag in pkgtags:
+            try:
+                indices.append(to_repos.index(tag))
+            except ValueError:
+                # May be in the staging repo
+                indices.append(99)
+
+        to_indices.append(min(indices))
+
+    for index in to_indices:
+        if to_repos.index(repo) < index:
+            return True
+
+    return False
+
+
+def debug_check(app, packages):
+    """ Check whether the given packages have associated debuginfo packages. """
+    kojitmpsession = app.get_koji_session(ssl=False)
+
+    for package in packages:
+        build = kojitmpsession.getBuild(package)
+        rpmlist = kojitmpsession.listRPMs(build["id"])
+        for irpm in rpmlist:
+            if irpm['name'].find("-debuginfo") != -1:
+                app.logger.info("Found debuginfo packages.")
+                return True
+
+    app.logger.info("No debuginfo packages.")
+    return False
+
+
+def get_replaced_packages(app,kojisession,packages,to_repo):
+    """Find if the package we're pushing replaces any other packages
+    in the repository"""
+    replaced_pkgs = []
+    # set multicall to false for now so we can get results
+    kojisession.multicall = False
+    for pkg in packages:
+        pkg_split = pkg.split("-")
+        # last two fields are release and version, everything else must be name
+        pkg_name = "-".join(pkg_split[:-2])
+        results = kojisession.getLatestRPMS(to_repo,pkg_name)
+        # returns list of lists of packages (all builds for a given package)
+        for res in results:
+            for build in res:
+                if 'nvr' in build:
+                    if 'tag_info' in build and build['tag_info'] == to_repo:
+                        replaced_pkgs.append(build['nvr'])
+                        break
+
+    # set multicall back to true
+    kojisession.multicall = True
+    return replaced_pkgs
+
+def koji_get_tags(app, kojisession, packages, repo):
     """ Check if the given packages are really there
     If they are, return the tags associated with them"""
     clean = True
@@ -143,44 +264,18 @@ def check_packages(app, kojisession, packages, to_repo):
         app.exit(2)
     return allpkgtags
 
-def debug_check(app, packages):
-    """ Check whether the given packages have associated debuginfo packages. """
-    kojitmpsession = app.get_koji_session(ssl=False)
-
+def koji_untag_packages(app, kojisession, repo, packages):
     for package in packages:
-        build = kojitmpsession.getBuild(package)
-        rpmlist = kojitmpsession.listRPMs(build["id"])
-        for irpm in rpmlist:
-            if irpm['name'].find("-debuginfo") != -1:
-                app.logger.info("Found debuginfo packages.")
-                return True
+        app.logger.info("Tagging {} to {}".format(package, repo))
+        kojisession.untagBuildBypass(repo, package)
 
-    app.logger.info("No debuginfo packages.")
-    return False
+def koji_tag_packages(app, kojisession, repo, packages):
+    for package in packages:
+        app.logger.info("Tagging {} to {}".format(package, repo))
+        kojisession.tagBuildBypass(repo, package)
 
-
-def get_replaced_packages(app,kojisession,packages,to_repo):
-    """Find if the package we're pushing replaces any other packages
-    in the repository"""
-    replaced_pkgs = []
-    # set multicall to false for now so we can get results
-    kojisession.multicall = False
-    for pkg in packages:
-        pkg_split = pkg.split("-")
-        # last two fields are release and version, everything else must be name
-        pkg_name = "-".join(pkg_split[:-2])
-        results = kojisession.getLatestRPMS(to_repo,pkg_name)
-        # returns list of lists of packages (all builds for a given package)
-        for res in results:
-            for build in res:
-                if 'nvr' in build:
-                    if 'tag_info' in build and build['tag_info'] == to_repo:
-                        replaced_pkgs.append(build['nvr'])
-                        break
-
-    # set multicall back to true
-    kojisession.multicall = True
-    return replaced_pkgs
+def koji_get_errors_from_result(app, results):
+    return [r['faultString'] for r in results if 'faultString' in r]
 
 
 def push_packages(app, kojisession, packages, to_repo, user, test):
@@ -193,19 +288,14 @@ def push_packages(app, kojisession, packages, to_repo, user, test):
     packagelist = []
     changelogs = u""
 
-    # get the packages that will be replaced by this push
-    replaced_pkgs = get_replaced_packages(app,kojisession,packages,to_repo)
+    # Untag replaced packages and tag pushed packages
+    if not test:
+        replaced_pkgs = get_replaced_packages(app,kojisession,packages,to_repo)
+        koji_untag_packages(app, kojisession, to_repo, packages)
+        koji_tag_packages(app, kojisession, to_repo, packages)
 
-    # untag all the pkgs, they will be replaced
-    for pkg in replaced_pkgs:
-        kojisession.untagBuildBypass(to_repo, pkg)
-
+    # Create results message
     for package in packages:
-        app.logger.info("Tagging " + package + " into " + to_repo)
-        if not test:
-            # This does the actual Koji "pushing" if it's not a test
-            kojisession.tagBuildBypass(to_repo, package)
-
         message.append(package)
         packagelist.append(package)
         changelogs += """
@@ -230,26 +320,17 @@ def push_packages(app, kojisession, packages, to_repo, user, test):
 
     # Apply changes to Koji
     results = kojisession.multiCall()
+    errors = koji_get_errors_from_result(results)
 
-    # Look for errors
-    clean = True
-    errors = []
-    for i in range(len(results)):
-        try:
-            if results[i]['faultString']:
-                app.logger.error("Error: " + results[i]['faultString'])
-                errors.append("Error: " + results[i]['faultString'])
-                clean = False
-        except (KeyError, TypeError):
-            app.logger.debug("pushpackage triggered an error while looking for errors.")
-            pass
+    for error in errors:
+        app.logger.error(error)
 
     # Prepare for the email
     distname = app.config.get("repositories", "distname_nice")
     distver = app.distver
     packagelist = ", ".join(packagelist)
 
-    if clean == False:
+    if errors:
         email_subject = "{0} {1} - Push Failed - {2}".format(distname, distver, packagelist)
         email_body = "\n".join(errors)
         sendspam.sendspam(app, email_subject, email_body, scriptname="pushpackage")
