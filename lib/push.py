@@ -252,7 +252,8 @@ def koji_get_tags(app, kojisession, packages, repo):
                 clean = False
             if to_repo in pkgtags:
                 # Already exists in the target repository
-                app.logger.error('Package {0} already exists in {1}.'.format(package, to_repo))
+                app.logger.error('Package {0} already exists in {1}.'.format(
+                    package, repo))
                 clean = False
         else:
             # Nothing found in Koji
@@ -263,6 +264,7 @@ def koji_get_tags(app, kojisession, packages, repo):
     if clean == False:
         app.exit(2)
     return allpkgtags
+
 
 def koji_untag_packages(app, kojisession, repo, packages):
     for package in packages:
