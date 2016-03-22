@@ -42,6 +42,8 @@ os.umask(002)
 # Repository goes in the wrapper
 # distver goes in the app handler (rcommon)
 
+DEFAULT_CONFIG_PATH = "/etc/rutgers-repotools.cfg"
+
 def parse_distrepo(distrepo):
     """ Parses a distribution/repository name into its constituent parts.
 
