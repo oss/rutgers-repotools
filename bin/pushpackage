@@ -20,7 +20,7 @@
 #                                                                             #
 ###############################################################################
 
-import RUtools
+from RUtools import push
 
 if __name__ == '__main__':
-    RUtools.run_pushpackage()
+    push.main()
