@@ -22,7 +22,7 @@
 #                                                                             #
 ###############################################################################
 
-import RUtools
+from RUtools import checkdep
 
 if __name__ == '__main__':
-    RUtools.run_depcheck()
+    checkdep.main()

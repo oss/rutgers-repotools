@@ -27,6 +27,8 @@ import string
 import sys
 import tempfile
 import re
+from optparse import OptionParser
+import rcommon, sendspam
 
 from yum.constants import LETTERFLAGS
 from yum.misc import getCacheDir
@@ -35,6 +37,81 @@ from repoutils import repoclosure
 from repoutils import genpkgmetadata
 
 DEPS = {}
+
+def main():
+    os.umask(002)
+    myapp = rcommon.AppHandler(verifyuser=False)
+
+    versions = myapp.config.get("repositories", "alldistvers").split()
+    distname = myapp.config.get("repositories", "distname")
+    repos = RUtools.get_publishrepos(myapp)
+    repos.append("upstream")
+
+    usage = "usage: %prog [options] <distro>-<repo>\n\n"
+    usage += "  <distro>       one of: " + string.join([distname + v for v in versions], " ") + "\n"
+    usage += "  <repo>         one of: " + string.join(repos, " ") + "\n"
+
+    parser = OptionParser(usage)
+    parser.add_option("--nomail",
+                      action="store_true",
+                      help="Do not send email notification")
+    parser.add_option("-v", "--verbose",
+                      default=False,
+                      action="store_true",
+                      help="Verbose output")
+    parser.add_option("-q", "--quiet",
+                      default=False,
+                      action="store_true",
+                      help="Don't output anything")
+
+    (options, args) = parser.parse_args(sys.argv[1:])
+
+    mail = not options.nomail
+
+    if options.verbose:
+        verbosity = logging.DEBUG
+    else:
+        verbosity = logging.INFO
+
+    if len(args) != 1:
+        print "Error: Invalid number of arguments: ", args
+        print "Exactly one repository argument is expected."
+        myapp.exit(1)
+
+    distro, distver, check_repo = parse_distrepo(args[0])
+    if distro is None or distver is None or check_repo is None:
+        myapp.logger.error("Error: Badly formatted distribution, version or repository.")
+        myapp.exit(1)
+    if distro != distname:
+        myapp.logger.error("Error: '" + distro + "' is not a valid distribution name.")
+        myapp.exit(1)
+    if not distver in versions:
+        myapp.logger.error("Error: '" + distro + distver + "' is not a valid distribution version.")
+        myapp.exit(1)
+    if not check_repo in repos:
+        print "Error: Invalid from_repo: ", check_repo
+        myapp.exit(1)
+
+    myapp.init_logger(verbosity, options.quiet)
+    myapp.distver = distver
+
+    results = doit(myapp, check_repo)
+    timerun = myapp.time_run()
+    if results:
+        myapp.logger.error("There are broken dependencies.")
+
+        if mail:
+            distname = myapp.config.get("repositories", "distname_nice")
+            email_subject = "{0} {1} - Broken Dependencies".format(distname, distver)
+            problem = "The routine daily check has found dependency problems.\n"
+            email_body = problem + results
+            email_body = add_time_run(email_body, timerun)
+            myapp.logger.warning("Sending email...")
+            sendspam.sendspam(myapp, email_subject, email_body, scriptname="depcheck")
+
+    myapp.logger.info("Time run: " + str(timerun) + " s")
+    myapp.exit()
+
 
 def generate_config(app, disttype, arch, tmprepodir="", removal=False):
     """ Generates a yum config file for our purposes """
@@ -356,7 +433,20 @@ def create_tmp_repo(app, packages, arch, removalfromrepo = ""):
     return tempdir
 
 def doit(app, repotype, packages = [], removal = False):
-    """ Wrapper function for everything """
+    """Check the dependencies of the package repo
+    
+    This is done with repoclosure, which is from the yum python module. Given
+    a yum configuration file, repoclosure is able to process the metadata
+    of the repo and calculate dependencies. We create a temporary directory,
+    copy the repo files to the temp directory, and generate a yum config
+    file for the directory so repoclosure can do its thing.
+
+    Arguments:
+    app - an instance of the rcommon apphandler
+    repotype - 
+    packages - 
+    removal - 
+    """
 
     i_am_broken = False
 
