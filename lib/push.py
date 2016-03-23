@@ -106,7 +106,19 @@ def main():
 
 def pushpackage(myapp, mail, test, force, distname, distver, to_repo, packages,
                 checkdep_to_repo=False):
-    """ The actual pusher. """
+    """ Pushes a package to the given repo by making the appropriate 
+    Koji tag changes.
+
+    Arguments:
+    myapp - an instance of rcommon apphandler
+    mail - if True will send an email with the results
+    force - if True will not perform dependency checking
+    distname - name of the distro, e.g. 'centos'. TODO: why is this needed?
+    distver - version of distro, e.g. 6 for centos6
+    to_repo - the repo to push the package to
+    packages - a list of packages to push
+    checkdep_to_repo - TODO: unused
+    """
     user = myapp.username
     kojisession = myapp.get_koji_session(ssl=True)
 
