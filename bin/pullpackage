@@ -20,7 +20,7 @@
 #                                                                             #
 ###############################################################################
 
-import RUtools
+from RUtools import pull
 
 if __name__ == '__main__':
-    RUtools.run_pullpackage()
+    pull.main()

@@ -19,7 +19,181 @@ the from_repo and copies the corresponding debuginfo subpackages. """
 #    GNU General Public License for more details.                             #
 #                                                                             #
 ###############################################################################
-import sendspam
+
+from optparse import OptionParser
+import time
+import rcommon, sendspam
+
+
+def main():
+    """ Wrapper function to remove packages from repos. """
+    os.umask(002)
+    myapp = rcommon.AppHandler(verifyuser=True)
+
+    # Grab repository information
+    versions = myapp.config.get("repositories", "alldistvers").split()
+    distname = myapp.config.get("repositories", "distname")
+    from_repos = myapp.config.get("repositories", "allrepos").split()
+
+    usage =  "usage: %prog [options] <distro>-<from_repo> <package(s)>\n\n"
+    usage += "  <distro>     one of: " + string.join([distname + v for v in versions], " ") + "\n"
+    usage += "  <from_repo>     one of: " + string.join(from_repos, " ") + "\n"
+    usage += "  <package(s)>    A list of packages in NVR format"
+    parser = OptionParser(usage)
+    parser.add_option("--nomail",
+                      action="store_true",
+                      help="Do not send email notification")
+    parser.add_option("-f", "--force",
+                      action="store_true",
+                      help="Do not do dependency checking")
+    parser.add_option("-t", "--test",
+                      default=False,
+                      action="store_true",
+                      help="Do the dependency checking and exit. No actual pulls are made.")
+    parser.add_option("-v", "--verbose",
+                      default=False,
+                      action="store_true",
+                      help="Verbose output")
+
+    (options, args) = parser.parse_args(sys.argv[1:])
+    myapp.create_lock()
+
+    if options.verbose:
+        verbosity = logging.DEBUG
+    else:
+        verbosity = logging.INFO
+    myapp.init_logger(verbosity)
+
+
+    if len(args) < 2:
+        myapp.logger.error("Error: Too few arguments: " + str(args))
+        myapp.logger.error("Run with --help to see correct usage")
+        myapp.exit(1)
+
+    if options.nomail:
+        mail = False
+    else:
+        mail = True
+
+    if options.test:
+        mail = False
+        myapp.logger.warning("This is a test run. No packages will be pulled. No emails will be sent.")
+
+    # Examine the command line arguments
+    packages = args[1:]
+    distro, distver, from_repo = RUtools.parse_distrepo(args[0])
+    if (distro is None or distver is None or from_repo is None):
+        myapp.logger.error("Error: Badly formatted distribution, version or repository.")
+        myapp.exit(1)
+
+    # Lots of checks
+    if distro != distname:
+        myapp.logger.error("Error: '" + distro + "' is not a valid distribution name.")
+        myapp.exit(1)
+    if not distver in versions:
+        myapp.logger.error("Error: '" + distro + distver + "' is not a valid distribution version.")
+        myapp.exit(1)
+    if not from_repo in from_repos:
+        myapp.logger.error("Error: Invalid from_repo: " + from_repo)
+        myapp.exit(1)
+
+    myapp.distver = distver
+
+    # Run the script and time it
+    localtime = time.asctime(time.localtime(time.time()))
+    myapp.logger.info("Pull started on", localtime)
+    pullpackage(myapp, mail, options.test, options.force, from_repo, packages)
+    timerun = myapp.time_run()
+    if options.test:
+        myapp.logger.warning("End of test run. " + str(timerun) + " s")
+    else:
+        myapp.logger.info("Success! Time run: " + str(timerun) + " s")
+
+    myapp.exit(0)
+
+
+def pullpackage(myapp, mail, test, force, from_repo, packages, checkdep_from_repo=False):
+    """ The actual puller."""
+    # Data
+    user = myapp.username
+    distver = myapp.distver
+    distname = myapp.config.get("repositories", "distname")
+    from_repos = myapp.config.get("repositories", "allrepos").split()
+
+    # Get the full names of the repositories
+    from_repo_full = "{0}{1}-{2}".format(distname, distver, from_repo)
+    full_repos = ["{0}{1}-{2}".format(distname, distver, x) for x in from_repos]
+
+    # Find all of the tags associated with the packages
+    kojisession = myapp.get_koji_session(ssl=True)
+    pkgstags = pull.check_packages(myapp, kojisession, packages, from_repo_full)
+
+    # We only need to depcheck the from_repo if it does not inherit
+    # from parent repos that the packages are tagged with
+
+    # This algorithm assumes that the repositories are placed in a standard
+    # order (most general to most specific). If we are pushing upwards, we must
+    # do dependency checking; otherwise we skip it
+
+    # If there exists a tag in pkgtags that does not exist in full_repos, emit a
+    # warning instead of crashing.
+
+    from_indices = []
+    for pkgtags in pkgstags:
+        indices = []
+        for tag in pkgtags:
+            try:
+                indices.append(full_repos.index(tag))
+            except ValueError:
+                myapp.logger.warning(
+                        "Tag {0} is not one of {1}".format(tag, full_repos))
+        from_indices.append(min(indices))
+
+    for index in from_indices:
+        if from_repos.index(from_repo) <= index:
+            checkdep_from_repo = True
+
+    # Do not do dependency checking when --force flag is given
+    if not force:
+        if checkdep_from_repo:
+            results = checkdep.doit(myapp, from_repo, packages, True)
+            depcheck_results(myapp, user, packages, results, mail, action="pull")
+        else:
+            myapp.logger.info("The specified packages are already inherited from a parent repo.")
+            myapp.logger.info("No need to do dependency checking.")
+
+    if test:
+        myapp.logger.info("Test of pullpackage complete.")
+    else:
+        pullresults = pull.pull_packages(myapp, kojisession, packages,
+                                         distname + distver + "-" + from_repo,
+                                         user)
+
+        # We are not exposing the build repos anymore. So create our own repo
+        myapp.logger.info("Next, regenerate repositories and expose.")
+
+        dontpublishrepos = myapp.config.get("repositories",
+                                            "dontpublishrepos").split()
+        repostodebug = myapp.config.get("repositories", "repostodebug").split()
+
+        dbgcheck = pull.debug_check(myapp, packages)
+        debugrepo_built = False
+        repo_built = False
+
+        if not from_repo in dontpublishrepos:
+            if from_repo in repostodebug and dbgcheck == True:
+                debugrepo_built = True
+            genrepo.gen_repos(myapp, [from_repo], debugrepo_built)
+            repo_built = True
+
+        if repo_built:
+            populatedb.update_db(myapp, False, False)
+
+        if mail:
+            timerun = myapp.time_run()
+            myapp.logger.info("Finally, sending email.")
+            email_body = add_time_run(pullresults[1], timerun)
+            sendspam.sendspam(myapp, pullresults[0], email_body, scriptname="pullpackage")
 
 def check_packages(app, kojisession, packages, to_repo):
     """ Check if the given packages are really there
