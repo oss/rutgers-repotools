@@ -105,7 +105,7 @@ def main():
             email_subject = "{0} {1} - Broken Dependencies".format(distname, distver)
             problem = "The routine daily check has found dependency problems.\n"
             email_body = problem + results
-            email_body = add_time_run(email_body, timerun)
+            email_body = RUtools.add_time_run(email_body, timerun)
             myapp.logger.warning("Sending email...")
             sendspam.sendspam(myapp, email_subject, email_body, scriptname="depcheck")
 

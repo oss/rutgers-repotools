@@ -21,7 +21,6 @@ the from_repo and copies the corresponding debuginfo subpackages. """
 ###############################################################################
 
 from optparse import OptionParser
-import time
 import rcommon, sendspam
 
 
@@ -100,8 +99,6 @@ def main():
     myapp.distver = distver
 
     # Run the script and time it
-    localtime = time.asctime(time.localtime(time.time()))
-    myapp.logger.info("Pull started on", localtime)
     pullpackage(myapp, mail, options.test, options.force, from_repo, packages)
     timerun = myapp.time_run()
     if options.test:

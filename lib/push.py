@@ -21,7 +21,6 @@ and copies the corresponding debuginfo subpackages. """
 ###############################################################################
 
 import datetime
-import time
 import sendspam, rcommon, checkdep, genrepos, populatedb
 from optparse import OptionParser
 
@@ -89,9 +88,6 @@ def main():
     myapp.distver = distver
 
     # Run the script and time it
-    localtime = time.asctime(time.localtime(time.time()))
-    myapp.logger.info("Push started on", localtime)
-    
     pushpackage(myapp, mail, options.test, options.force, distname, distver, 
             to_repo, packages)
     
