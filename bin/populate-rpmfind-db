@@ -20,7 +20,7 @@
 #                                                                             #
 ###############################################################################
 
-import RUtools
+from RUtools import populatedb
 
 if __name__ == '__main__':
-    RUtools.run_populate_rpmfind_db()
+    populatedb.main()
