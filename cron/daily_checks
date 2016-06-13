@@ -49,7 +49,7 @@ class App():
         Run the actual scripts.
         """
         self.koji_backup()
-        self.rpmdb_backup()
+#        self.rpmdb_backup()
         self.repocheck()
         self.depcheck()
 
